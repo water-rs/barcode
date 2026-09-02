@@ -1,4 +1,4 @@
-//! Barcode matrix generation for GPU rendering.
+//! Barcode matrix generation.
 
 use barcoders::sym::code128::Code128;
 use core::cell::RefCell;
@@ -6,9 +6,6 @@ use core::fmt;
 use std::rc::Rc;
 use waterui_core::reactive::watcher::BoxWatcherGuard;
 use waterui_core::{Computed, Signal, Str};
-use waterui_graphics::{GpuRuntime, GpuSurface, OffscreenRenderConfig, OffscreenSize};
-
-use crate::BarcodeRenderer;
 
 /// An error produced when barcode content cannot be encoded.
 #[derive(Debug, thiserror::Error)]
@@ -39,7 +36,8 @@ pub enum BarcodeSymbology {
 
 /// A barcode data source.
 ///
-/// Encodes module data once during construction; rasterization happens on GPU.
+/// Encodes module data once during construction; placement and rasterization
+/// happen when the barcode is drawn into a scene.
 #[derive(Clone)]
 pub struct BarcodeSource {
     symbology: BarcodeSymbology,
@@ -48,7 +46,7 @@ pub struct BarcodeSource {
     size: u32,
 }
 
-/// Barcode matrix data packed for GPU consumption.
+/// Barcode module data, one bit per module.
 #[derive(Debug, Clone)]
 pub struct BarcodeMatrix {
     /// Matrix width in modules.
@@ -62,6 +60,25 @@ pub struct BarcodeMatrix {
     /// Bit 0 of word 0 = module (0,0), bit 1 = module (1,0), etc.
     /// 1 = dark module, 0 = light module
     pub packed_data: Vec<u32>,
+}
+
+impl BarcodeMatrix {
+    /// Returns whether the module at `(x, y)` is dark.
+    ///
+    /// # Panics
+    ///
+    /// Panics when `(x, y)` lies outside the matrix.
+    #[must_use]
+    pub fn is_dark(&self, x: u32, y: u32) -> bool {
+        assert!(
+            x < self.width && y < self.height,
+            "module ({x}, {y}) is outside a {}x{} barcode matrix",
+            self.width,
+            self.height
+        );
+        let index = (y * self.width + x) as usize;
+        (self.packed_data[index / 32] >> (index % 32)) & 1 == 1
+    }
 }
 
 impl fmt::Debug for BarcodeSource {
@@ -203,6 +220,9 @@ impl BarcodeSource {
         })
     }
 
+    /// The pixel dimensions [`Self::size`] asks for, floored at one pixel per
+    /// module so no module can collapse.
+    #[cfg(feature = "gpu")]
     fn render_dimensions(&self) -> (u32, u32) {
         let quiet_zone = self.quiet_zone();
         let configured_size = self.size;
@@ -307,21 +327,29 @@ impl ReactiveBarcodeContent {
     }
 }
 
+/// Rasterizes a barcode scene into a standalone image.
+///
+/// This is the one part of the crate that needs a GPU device: everything else
+/// draws through the engine-neutral scene contract.
+#[cfg(feature = "gpu")]
 impl waterui_graphics::image_generator::ImageGenerator for BarcodeSource {
     #[expect(
         clippy::future_not_send,
-        reason = "barcode generation awaits the UI-local offscreen GpuView environment"
+        reason = "barcode generation awaits the UI-local offscreen scene environment"
     )]
     async fn generate(
         &self,
-        runtime: &GpuRuntime,
+        runtime: &waterui_graphics::GpuRuntime,
     ) -> waterui_graphics::image_generator::GeneratedImage {
+        use waterui_graphics::{OffscreenRenderConfig, OffscreenSize, SceneView, wgpu};
+
         let (width, height) = self.render_dimensions();
         let size = OffscreenSize::try_from_pixels(width, height)
             .expect("BarcodeSource::generate: dimensions must be non-zero");
         let config = OffscreenRenderConfig::new(size).format(wgpu::TextureFormat::Rgba8Unorm);
         let mut env = waterui_core::Environment::new();
-        let output = GpuSurface::new(BarcodeRenderer::new(self.clone()))
+        let output = SceneView::new(crate::BarcodeRenderer::new(self.clone(), &env))
+            .into_gpu_surface()
             .render_offscreen(runtime, config, &mut env)
             .await
             .expect("BarcodeSource::generate: GPU offscreen render should succeed");
@@ -336,7 +364,6 @@ impl waterui_graphics::image_generator::ImageGenerator for BarcodeSource {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use waterui_graphics::image_generator::ImageGenerator;
 
     #[test]
     fn code128_matrix_stores_one_row_of_modules() {
@@ -361,8 +388,11 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "gpu")]
     #[test]
     fn qr_generator_produces_expected_size_and_pixels() {
+        use waterui_graphics::{GpuRuntime, image_generator::ImageGenerator as _};
+
         let runtime = pollster::block_on(GpuRuntime::new())
             .expect("barcode tests require a working GPU runtime");
         let mut source =
@@ -376,8 +406,11 @@ mod tests {
         assert_eq!(image.rgba8().len(), 192 * 192 * 4);
     }
 
+    #[cfg(feature = "gpu")]
     #[test]
     fn code128_generator_produces_expected_size_and_pixels() {
+        use waterui_graphics::{GpuRuntime, image_generator::ImageGenerator as _};
+
         let runtime = pollster::block_on(GpuRuntime::new())
             .expect("barcode tests require a working GPU runtime");
         let mut source =

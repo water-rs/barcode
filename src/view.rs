@@ -1,14 +1,13 @@
-use crate::{BarcodeMaskEffect, BarcodeRenderer, BarcodeSymbology};
+use crate::{BarcodeMask, BarcodeRenderer, BarcodeSymbology};
 use core::fmt;
 use nami::{Computed, SignalExt as _, signal::IntoComputed};
 use waterui_core::{
     AnyView, Environment, Str, View,
     accessibility::{AccessibilityLabel, AccessibilityRole},
-    flatten_signal,
     layout::UnitPoint,
     metadata::IgnorableMetadata,
 };
-use waterui_graphics::{GpuSurface, GpuView, ViewEffect, color::Color};
+use waterui_graphics::{SceneContent, SceneView, color::Color};
 
 /// Fill style for dark barcode modules.
 ///
@@ -96,9 +95,10 @@ fn apply_barcode_semantics(
 
 /// A view that renders a barcode.
 ///
-/// `Barcode` is a high-performance, GPU-accelerated view that renders
-/// QR/linear barcodes via fragment shader rasterization from a packed matrix
-/// buffer.
+/// `Barcode` draws QR and linear barcodes as vector geometry through the
+/// engine-neutral scene contract, so it renders identically on the GPU compute
+/// renderer, the CPU sparse-strip renderer, and native backends that own their
+/// own scene.
 ///
 /// # Example
 ///
@@ -116,17 +116,17 @@ pub struct Barcode {
     light_color: Computed<Color>,
 }
 
-/// Barcode view filled by arbitrary GPU content.
-pub struct BarcodeGpuFill<V: GpuView> {
+/// Barcode view whose dark modules are filled by arbitrary scene content.
+pub struct BarcodeSceneFill<C: SceneContent> {
     symbology: BarcodeSymbology,
     content: Computed<Str>,
-    fill: V,
+    ink: C,
     light_color: Computed<Color>,
 }
 
-impl<V: GpuView> fmt::Debug for BarcodeGpuFill<V> {
+impl<C: SceneContent> fmt::Debug for BarcodeSceneFill<C> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("BarcodeGpuFill").finish_non_exhaustive()
+        f.debug_struct("BarcodeSceneFill").finish_non_exhaustive()
     }
 }
 
@@ -203,21 +203,22 @@ impl Barcode {
         self
     }
 
-    /// Fills dark modules using arbitrary GPU-rendered content.
+    /// Fills dark modules using arbitrary scene content.
     ///
-    /// Any type implementing `GpuView` can be passed directly.
+    /// Any type implementing `SceneContent` can be passed directly; it draws
+    /// across the whole surface and is clipped to the dark modules.
     #[must_use]
-    pub fn fill_gpu<V: GpuView>(self, fill: V) -> BarcodeGpuFill<V> {
-        BarcodeGpuFill {
+    pub fn fill_scene<C: SceneContent>(self, ink: C) -> BarcodeSceneFill<C> {
+        BarcodeSceneFill {
             symbology: self.symbology,
             content: self.content,
-            fill,
+            ink,
             light_color: self.light_color,
         }
     }
 }
 
-impl<V: GpuView> BarcodeGpuFill<V> {
+impl<C: SceneContent> BarcodeSceneFill<C> {
     /// Sets light module/background color for the masked barcode output.
     #[must_use]
     pub fn light_color(mut self, color: impl IntoComputed<Color>) -> Self {
@@ -234,29 +235,23 @@ impl View for Barcode {
             fill,
             light_color,
         } = self;
-        let renderer = BarcodeRenderer::reactive(symbology, content.clone())
+        let renderer = BarcodeRenderer::reactive(symbology, content.clone(), env)
             .with_fill(fill)
             .with_light_color(light_color);
-        apply_barcode_semantics(env, symbology, &content, GpuSurface::new(renderer))
+        apply_barcode_semantics(env, symbology, &content, SceneView::new(renderer))
     }
 }
 
-impl<V: GpuView> View for BarcodeGpuFill<V> {
+impl<C: SceneContent> View for BarcodeSceneFill<C> {
     fn body(self, env: &Environment) -> impl View {
-        let environment = env.clone();
-        let resolved_light = flatten_signal(
-            self.light_color
-                .map(move |color| color.resolve(&environment)),
-        );
-        let effect =
-            BarcodeMaskEffect::reactive(self.symbology, self.content.clone(), resolved_light);
-        let fill_surface = GpuSurface::new(self.fill);
-        apply_barcode_semantics(
-            env,
+        let mask = BarcodeMask::reactive(
             self.symbology,
-            &self.content,
-            ViewEffect::new(fill_surface, effect),
-        )
+            self.content.clone(),
+            self.light_color,
+            self.ink,
+            env,
+        );
+        apply_barcode_semantics(env, self.symbology, &self.content, SceneView::new(mask))
     }
 }
 

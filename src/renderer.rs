@@ -1,193 +1,181 @@
-//! GPU renderer for packed barcode matrices.
+//! Vector scene content for encoded barcode matrices.
 
-use bytemuck::{Pod, Zeroable};
 use core::fmt;
-use nami::signal::IntoComputed;
-use waterui_core::{Computed, Environment, layout::UnitPoint};
-use wgpu::util::DeviceExt;
 
-use crate::qr::ReactiveBarcodeContent;
-use crate::{BarcodeSource, BarcodeSymbology, shaders::QR_RENDER, view::BarcodeFill};
-use waterui_core::Str;
+use kurbo::{Affine, BezPath, Point, Rect};
+use nami::{SignalExt as _, signal::IntoComputed};
+use peniko::{Brush, ColorStop, Fill, Gradient};
+use waterui_core::reactive::watcher::BoxWatcherGuard;
+use waterui_core::{Computed, Environment, Signal as _, Str, flatten_signal, layout::UnitPoint};
 use waterui_graphics::{
-    GpuContext, GpuFrame, GpuView,
+    Scene2D, SceneContent, SceneInvalidator,
     color::{Color, ResolvedColor, Srgb},
-    reactive_color::ReactiveColor,
 };
 
-/// Uniforms consumed by `qr_render.wgsl`.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Pod, Zeroable)]
-struct QrUniforms {
-    matrix_width: u32,
-    matrix_height: u32,
-    quiet_zone_x: u32,
-    quiet_zone_y: u32,
-    output_width: u32,
-    output_height: u32,
-    fill_mode: u32,
-    preserve_square_modules: u32,
-    solid_dark_color: [f32; 4],
-    light_color: [f32; 4],
-    gradient_start_color: [f32; 4],
-    gradient_end_color: [f32; 4],
-    gradient_start_point: [f32; 2],
-    gradient_end_point: [f32; 2],
-}
+use crate::geometry::{content_rect, dark_module_path};
+use crate::qr::ReactiveBarcodeContent;
+use crate::{BarcodeSource, BarcodeSymbology, view::BarcodeFill};
 
-/// A GPU renderer that displays a packed barcode matrix.
+/// A [`SceneContent`] that draws a barcode as vector geometry.
 ///
-/// The matrix is generated on CPU and packed into a bit buffer once, then
-/// rendered fully on GPU each frame by sampling that bit buffer directly in a
-/// fragment shader. Colors stay reactive for the renderer lifetime; changes
-/// resolve through the setup environment and wake the surface precisely.
+/// The matrix is encoded on CPU once and emitted as one filled path of dark
+/// modules, so the same content draws through any [`Scene2D`] — the GPU
+/// compute renderer, the CPU sparse-strip renderer, or a recording. Colors stay
+/// reactive for the content's lifetime: a change resolves through the
+/// environment the content was built in and invalidates the surface precisely.
 pub struct BarcodeRenderer {
+    environment: Environment,
     source: BarcodeSource,
     reactive_content: Option<ReactiveBarcodeContent>,
-    fill: BarcodeFill,
-    light_color: Computed<Color>,
-    render_pipeline: Option<wgpu::RenderPipeline>,
-    bind_group_layout: Option<wgpu::BindGroupLayout>,
-    uniform_buffer: Option<wgpu::Buffer>,
-    bind_group: Option<wgpu::BindGroup>,
-    matrix_width: u32,
-    matrix_height: u32,
-    reactive_colors: Option<ReactiveBarcodeColors>,
+    fill: ResolvedFill,
+    light_color: Computed<ResolvedColor>,
+    color_guards: Vec<BoxWatcherGuard>,
 }
 
-#[derive(Clone, Copy, Debug)]
-struct ResolvedColors {
-    fill_mode: u32,
-    solid_dark_color: [f32; 4],
-    light_color: [f32; 4],
-    gradient_start_color: [f32; 4],
-    gradient_end_color: [f32; 4],
-    gradient_start_point: [f32; 2],
-    gradient_end_point: [f32; 2],
-}
-
-enum ReactiveBarcodeFill {
-    Solid(ReactiveColor),
+/// A [`BarcodeFill`] whose colors are already resolved against an environment.
+enum ResolvedFill {
+    Solid(Computed<ResolvedColor>),
     LinearGradient {
-        start: ReactiveColor,
-        end: ReactiveColor,
+        start: Computed<ResolvedColor>,
+        end: Computed<ResolvedColor>,
         start_point: UnitPoint,
         end_point: UnitPoint,
     },
 }
 
-struct ReactiveBarcodeColors {
-    light: ReactiveColor,
-    fill: ReactiveBarcodeFill,
-}
-
-impl ReactiveBarcodeColors {
-    fn new(fill: &BarcodeFill, light: &Computed<Color>, env: &Environment) -> Self {
-        let fill = match fill {
-            BarcodeFill::Solid(color) => ReactiveBarcodeFill::Solid(ReactiveColor::new(color, env)),
-            BarcodeFill::LinearGradient {
-                start_color,
-                end_color,
-                start_point,
-                end_point,
-            } => ReactiveBarcodeFill::LinearGradient {
-                start: ReactiveColor::new(start_color, env),
-                end: ReactiveColor::new(end_color, env),
-                start_point: *start_point,
-                end_point: *end_point,
-            },
-        };
-        Self {
-            light: ReactiveColor::new(light, env),
-            fill,
-        }
-    }
-
-    fn install(&mut self, redraw: &waterui_graphics::RedrawHandle) {
-        self.light.install(redraw);
-        match &mut self.fill {
-            ReactiveBarcodeFill::Solid(color) => color.install(redraw),
-            ReactiveBarcodeFill::LinearGradient { start, end, .. } => {
-                start.install(redraw);
-                end.install(redraw);
-            }
-        }
-    }
-
-    fn resolve(&self) -> ResolvedColors {
-        let light_color = resolved_color_to_array(&self.light.get());
-        match &self.fill {
-            ReactiveBarcodeFill::Solid(color) => ResolvedColors {
-                fill_mode: 0,
-                solid_dark_color: resolved_color_to_array(&color.get()),
-                light_color,
-                gradient_start_color: [0.0; 4],
-                gradient_end_color: [0.0; 4],
-                gradient_start_point: [0.0, 0.0],
-                gradient_end_point: [1.0, 1.0],
-            },
-            ReactiveBarcodeFill::LinearGradient {
+impl ResolvedFill {
+    /// The brush painting dark modules laid out inside `area`.
+    ///
+    /// Gradient endpoints are unit coordinates of the barcode square, so they
+    /// are mapped onto `area` rather than onto the whole surface.
+    fn brush(&self, area: Rect) -> Brush {
+        match self {
+            Self::Solid(color) => Brush::Solid(to_peniko(&color.get())),
+            Self::LinearGradient {
                 start,
                 end,
                 start_point,
                 end_point,
-            } => ResolvedColors {
-                fill_mode: 1,
-                solid_dark_color: [0.0; 4],
-                light_color,
-                gradient_start_color: resolved_color_to_array(&start.get()),
-                gradient_end_color: resolved_color_to_array(&end.get()),
-                gradient_start_point: unit_point_to_array(*start_point),
-                gradient_end_point: unit_point_to_array(*end_point),
-            },
+            } => {
+                let anchor = |point: UnitPoint| {
+                    Point::new(
+                        f64::from(point.x).mul_add(area.width(), area.x0),
+                        f64::from(point.y).mul_add(area.height(), area.y0),
+                    )
+                };
+                let stops = [
+                    ColorStop {
+                        offset: 0.0,
+                        color: to_peniko(&start.get()).into(),
+                    },
+                    ColorStop {
+                        offset: 1.0,
+                        color: to_peniko(&end.get()).into(),
+                    },
+                ];
+                Brush::Gradient(
+                    Gradient::new_linear(anchor(*start_point), anchor(*end_point))
+                        .with_stops(stops.as_slice()),
+                )
+            }
         }
+    }
+
+    /// Every signal this fill reads, in the order it reads them.
+    fn colors(&self) -> impl Iterator<Item = &Computed<ResolvedColor>> {
+        let (first, second) = match self {
+            Self::Solid(color) => (color, None),
+            Self::LinearGradient { start, end, .. } => (start, Some(end)),
+        };
+        core::iter::once(first).chain(second)
     }
 }
 
-const fn resolved_color_to_array(color: &ResolvedColor) -> [f32; 4] {
-    [color.red, color.green, color.blue, color.opacity]
+/// Resolves `color` against `env`, keeping the result reactive.
+pub fn resolve_color(
+    color: impl IntoComputed<Color>,
+    env: &Environment,
+) -> Computed<ResolvedColor> {
+    let env = env.clone();
+    flatten_signal(color.into_computed().map(move |color| color.resolve(&env)))
 }
 
-const fn unit_point_to_array(point: UnitPoint) -> [f32; 2] {
-    [point.x, point.y]
+/// Resolves every color of `fill` against `env`.
+fn resolve_fill(fill: BarcodeFill, env: &Environment) -> ResolvedFill {
+    match fill {
+        BarcodeFill::Solid(color) => ResolvedFill::Solid(resolve_color(color, env)),
+        BarcodeFill::LinearGradient {
+            start_color,
+            end_color,
+            start_point,
+            end_point,
+        } => ResolvedFill::LinearGradient {
+            start: resolve_color(start_color, env),
+            end: resolve_color(end_color, env),
+            start_point,
+            end_point,
+        },
+    }
+}
+
+/// Converts a resolved linear-RGB color into the sRGB-encoded color peniko takes.
+pub fn to_peniko(color: &ResolvedColor) -> peniko::Color {
+    let srgb = color.to_srgb_with_headroom();
+    peniko::Color::new([
+        srgb.red,
+        srgb.green,
+        srgb.blue,
+        color.opacity.clamp(0.0, 1.0),
+    ])
+}
+
+/// Fills `rect` with `brush` through `scene`.
+pub fn fill_rect(scene: &mut dyn Scene2D, rect: Rect, brush: &Brush) {
+    let mut path = BezPath::new();
+    path.move_to((rect.x0, rect.y0));
+    path.line_to((rect.x1, rect.y0));
+    path.line_to((rect.x1, rect.y1));
+    path.line_to((rect.x0, rect.y1));
+    path.close_path();
+    scene.fill(Fill::NonZero, Affine::IDENTITY, brush, None, &path);
+}
+
+/// The surface rectangle, or `None` when the surface has no drawable area.
+pub fn surface_rect(width: f32, height: f32) -> Option<Rect> {
+    let (width, height) = (f64::from(width), f64::from(height));
+    (width.is_finite() && height.is_finite() && width > 0.0 && height > 0.0)
+        .then(|| Rect::new(0.0, 0.0, width, height))
 }
 
 impl fmt::Debug for BarcodeRenderer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BarcodeRenderer")
             .field("source", &self.source)
-            .field("matrix_width", &self.matrix_width)
-            .field("matrix_height", &self.matrix_height)
             .finish_non_exhaustive()
     }
 }
 
 impl BarcodeRenderer {
-    /// Creates a new renderer from a barcode source.
+    /// Creates scene content drawing `source`, resolving colors against `env`.
     ///
     /// Defaults to a solid black fill on a white background. Use
     /// [`Self::with_fill`] and [`Self::with_light_color`] to override.
     #[must_use]
-    pub fn new(source: BarcodeSource) -> Self {
+    pub fn new(source: BarcodeSource, env: &Environment) -> Self {
         Self {
+            environment: env.clone(),
             source,
             reactive_content: None,
-            fill: BarcodeFill::default(),
-            light_color: Computed::constant(Color::from(Srgb::WHITE)),
-            render_pipeline: None,
-            bind_group_layout: None,
-            uniform_buffer: None,
-            bind_group: None,
-            matrix_width: 0,
-            matrix_height: 0,
-            reactive_colors: None,
+            fill: resolve_fill(BarcodeFill::default(), env),
+            light_color: resolve_color(Color::from(Srgb::WHITE), env),
+            color_guards: Vec::new(),
         }
     }
 
-    /// Creates a renderer whose barcode content follows a signal.
+    /// Creates content whose barcode follows a signal.
     ///
-    /// Every content change re-encodes the matrix and re-uploads it before the
-    /// next frame, without recreating the renderer.
+    /// Every content change re-encodes the matrix before the next frame,
+    /// without recreating the content.
     ///
     /// # Panics
     ///
@@ -196,10 +184,14 @@ impl BarcodeRenderer {
     /// Pre-validate runtime user input with [`BarcodeSource::qr`] /
     /// [`BarcodeSource::code128`].
     #[must_use]
-    pub fn reactive(symbology: BarcodeSymbology, content: impl IntoComputed<Str>) -> Self {
+    pub fn reactive(
+        symbology: BarcodeSymbology,
+        content: impl IntoComputed<Str>,
+        env: &Environment,
+    ) -> Self {
         let reactive_content = ReactiveBarcodeContent::new(symbology, content.into_computed());
         let source = reactive_content.initial_source();
-        let mut renderer = Self::new(source);
+        let mut renderer = Self::new(source, env);
         renderer.reactive_content = Some(reactive_content);
         renderer
     }
@@ -207,231 +199,66 @@ impl BarcodeRenderer {
     /// Sets the fill style for dark modules.
     #[must_use]
     pub fn with_fill(mut self, fill: BarcodeFill) -> Self {
-        self.fill = fill;
+        self.fill = resolve_fill(fill, &self.environment);
         self
     }
 
     /// Sets the light module/background color.
     #[must_use]
     pub fn with_light_color(mut self, color: impl IntoComputed<Color>) -> Self {
-        self.light_color = color.into_computed();
+        self.light_color = resolve_color(color, &self.environment);
         self
-    }
-
-    fn create_render_pipeline(
-        device: &wgpu::Device,
-        format: wgpu::TextureFormat,
-    ) -> (wgpu::RenderPipeline, wgpu::BindGroupLayout) {
-        let (vertex_shader, fragment_shader) =
-            QR_RENDER.create_render_stages(device, "vs_main", "fs_main");
-
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("QR render bind group layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
-
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("QR render pipeline layout"),
-            bind_group_layouts: &[Some(&bind_group_layout)],
-            immediate_size: 0,
-        });
-
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("QR render pipeline"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: vertex_shader.module(),
-                entry_point: Some(vertex_shader.entry_point()),
-                buffers: &[],
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: fragment_shader.module(),
-                entry_point: Some(fragment_shader.entry_point()),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: None,
-                unclipped_depth: false,
-                polygon_mode: wgpu::PolygonMode::Fill,
-                conservative: false,
-            },
-            depth_stencil: None,
-            multisample: wgpu::MultisampleState::default(),
-            multiview_mask: None,
-            cache: None,
-        });
-
-        (pipeline, bind_group_layout)
-    }
-
-    fn create_buffers_and_bind_group(
-        &mut self,
-        device: &wgpu::Device,
-        bind_group_layout: &wgpu::BindGroupLayout,
-    ) {
-        let matrix = self.source.matrix();
-        self.matrix_width = matrix.width;
-        self.matrix_height = matrix.height;
-        let matrix_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("QR matrix storage buffer"),
-            contents: bytemuck::cast_slice(&matrix.packed_data),
-            usage: wgpu::BufferUsages::STORAGE,
-        });
-        let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("QR uniforms"),
-            size: core::mem::size_of::<QrUniforms>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("QR render bind group"),
-            layout: bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: uniform_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: matrix_buffer.as_entire_binding(),
-                },
-            ],
-        });
-        self.uniform_buffer = Some(uniform_buffer);
-        self.bind_group = Some(bind_group);
     }
 }
 
-impl GpuView for BarcodeRenderer {
-    fn setup(
-        &mut self,
-        ctx: &GpuContext<'_>,
-        env: &mut waterui_core::Environment,
-    ) -> impl core::future::Future<Output = ()> {
-        let (pipeline, bgl) = Self::create_render_pipeline(ctx.device, ctx.surface_format);
-        self.render_pipeline = Some(pipeline);
-        self.create_buffers_and_bind_group(ctx.device, &bgl);
-        self.bind_group_layout = Some(bgl);
-        let mut reactive_colors = ReactiveBarcodeColors::new(&self.fill, &self.light_color, env);
-        reactive_colors.install(&ctx.redraw_handle);
-        self.reactive_colors = Some(reactive_colors);
-        if let Some(reactive_content) = &mut self.reactive_content {
-            let redraw = ctx.redraw_handle.clone();
-            reactive_content.install(move || redraw.request_redraw());
-        }
-        core::future::ready(())
-    }
-
-    fn render(&mut self, frame: &mut GpuFrame) {
+impl SceneContent for BarcodeRenderer {
+    fn build_scene(&mut self, scene: &mut dyn Scene2D, width: f32, height: f32) -> bool {
         if let Some(source) = self
             .reactive_content
             .as_mut()
             .and_then(ReactiveBarcodeContent::take_reencoded)
         {
             self.source = source;
-            let bind_group_layout = self
-                .bind_group_layout
-                .take()
-                .expect("BarcodeRenderer render called before setup");
-            self.create_buffers_and_bind_group(frame.device, &bind_group_layout);
-            self.bind_group_layout = Some(bind_group_layout);
         }
-        let pipeline = self
-            .render_pipeline
-            .as_ref()
-            .expect("BarcodeRenderer render called before setup");
-        let bind_group = self
-            .bind_group
-            .as_ref()
-            .expect("BarcodeRenderer render called before setup");
-        let uniform_buffer = self
-            .uniform_buffer
-            .as_ref()
-            .expect("BarcodeRenderer render called before setup");
-        let resolved = self
-            .reactive_colors
-            .as_ref()
-            .expect("BarcodeRenderer render called before setup")
-            .resolve();
-
-        let uniforms = QrUniforms {
-            matrix_width: self.matrix_width,
-            matrix_height: self.matrix_height,
-            quiet_zone_x: self.source.quiet_zone(),
-            quiet_zone_y: self.source.vertical_quiet_zone(),
-            output_width: frame.width,
-            output_height: frame.height,
-            fill_mode: resolved.fill_mode,
-            preserve_square_modules: u32::from(self.source.preserves_square_modules()),
-            solid_dark_color: resolved.solid_dark_color,
-            light_color: resolved.light_color,
-            gradient_start_color: resolved.gradient_start_color,
-            gradient_end_color: resolved.gradient_end_color,
-            gradient_start_point: resolved.gradient_start_point,
-            gradient_end_point: resolved.gradient_end_point,
+        let Some(surface) = surface_rect(width, height) else {
+            return false;
         };
-        frame
-            .queue
-            .write_buffer(uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
 
-        let mut encoder = frame
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("QR renderer encoder"),
-            });
+        fill_rect(
+            scene,
+            surface,
+            &Brush::Solid(to_peniko(&self.light_color.get())),
+        );
 
-        {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("QR render pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &frame.view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            });
-            render_pass.set_pipeline(pipeline);
-            render_pass.set_bind_group(0, bind_group, &[]);
-            render_pass.draw(0..6, 0..1);
+        let area = content_rect(&self.source, surface.width(), surface.height());
+        let modules = dark_module_path(&self.source, area);
+        if !modules.is_empty() {
+            scene.fill(
+                Fill::NonZero,
+                Affine::IDENTITY,
+                &self.fill.brush(area),
+                None,
+                &modules,
+            );
         }
+        false
+    }
 
-        frame.queue.submit([encoder.finish()]);
+    fn set_invalidator(&mut self, invalidator: Option<SceneInvalidator>) {
+        self.color_guards.clear();
+        let Some(invalidator) = invalidator else {
+            return;
+        };
+
+        let mut guards = Vec::new();
+        for color in core::iter::once(&self.light_color).chain(self.fill.colors()) {
+            let invalidator = SceneInvalidator::clone(&invalidator);
+            guards.push(color.watch(move |_| invalidator()));
+        }
+        self.color_guards = guards;
+
+        if let Some(reactive_content) = &mut self.reactive_content {
+            reactive_content.install(move || invalidator());
+        }
     }
 }
