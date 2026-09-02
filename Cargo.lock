@@ -6774,18 +6774,17 @@ name = "waterui-barcode"
 version = "0.1.0"
 dependencies = [
  "barcoders",
- "bytemuck",
  "fast_qr",
+ "kurbo",
  "nami",
+ "peniko",
  "pollster 1.0.1",
  "rxing",
- "shaderloom",
  "thiserror 2.0.20",
  "waterui",
  "waterui-core",
  "waterui-graphics",
  "waterui-testing",
- "wgpu",
 ]
 
 [[package]]
