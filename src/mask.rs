@@ -5,6 +5,7 @@ use core::fmt;
 use kurbo::Affine;
 use nami::signal::IntoComputed;
 use peniko::{Brush, Fill};
+use waterui_core::layout::Size;
 use waterui_core::reactive::watcher::BoxWatcherGuard;
 use waterui_core::{Computed, Environment, Signal as _, Str};
 use waterui_graphics::{
@@ -12,7 +13,7 @@ use waterui_graphics::{
     color::{Color, ResolvedColor},
 };
 
-use crate::geometry::{content_rect, dark_module_path};
+use crate::geometry::{content_rect, dark_module_path, natural_size};
 use crate::qr::ReactiveBarcodeContent;
 use crate::renderer::{fill_rect, resolve_color, surface_rect, to_peniko};
 use crate::{BarcodeSource, BarcodeSymbology};
@@ -81,6 +82,12 @@ impl<C: SceneContent> BarcodeMask<C> {
 }
 
 impl<C: SceneContent> SceneContent for BarcodeMask<C> {
+    /// The barcode's own size, not the ink's: the ink draws across whatever
+    /// box the symbol is given.
+    fn intrinsic_size(&self) -> Option<Size> {
+        Some(natural_size(&self.source, self.reactive_content.as_ref()))
+    }
+
     fn build_scene(&mut self, scene: &mut dyn Scene2D, width: f32, height: f32) -> bool {
         if let Some(source) = self
             .reactive_content

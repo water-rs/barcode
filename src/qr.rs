@@ -42,7 +42,7 @@ pub enum BarcodeSymbology {
 pub struct BarcodeSource {
     symbology: BarcodeSymbology,
     matrix: BarcodeMatrix,
-    /// Output size in pixels
+    /// Output extent, in units; see [`Self::set_size`].
     size: u32,
 }
 
@@ -136,12 +136,16 @@ impl BarcodeSource {
         })
     }
 
-    /// Sets the output size in pixels.
+    /// Sets the output extent, in units.
+    ///
+    /// This is the size the barcode *is* when nothing else decides: the pixel
+    /// size the image generator rasterizes at, and the natural size the scene
+    /// contents report to layout through [`Self::output_size`].
     pub const fn set_size(&mut self, size: u32) {
         self.size = size;
     }
 
-    /// Returns the output size.
+    /// Returns the output extent set by [`Self::set_size`].
     #[must_use]
     pub const fn size(&self) -> u32 {
         self.size
@@ -220,10 +224,18 @@ impl BarcodeSource {
         })
     }
 
-    /// The pixel dimensions [`Self::size`] asks for, floored at one pixel per
-    /// module so no module can collapse.
-    #[cfg(feature = "gpu")]
-    fn render_dimensions(&self) -> (u32, u32) {
+    /// The size this barcode is, in units: the extent [`Self::size`] asks for,
+    /// floored at one unit per module (quiet zone included) so no module can
+    /// collapse.
+    ///
+    /// A QR code is that extent on both sides. A Code128 symbol is its bar
+    /// count wide, floored at the extent, and the extent tall — the symbology
+    /// fixes no bar height, so the configured extent is the one there is.
+    /// The image generator rasterizes at exactly this, in pixels, and the scene
+    /// contents answer it from `SceneContent::intrinsic_size`, in points, so a
+    /// barcode measures the same on both paths.
+    #[must_use]
+    pub fn output_size(&self) -> (u32, u32) {
         let quiet_zone = self.quiet_zone();
         let configured_size = self.size;
         let matrix = self.matrix();
@@ -273,13 +285,16 @@ impl BarcodeSource {
 
 /// Signal-driven barcode content shared by the renderer and the mask effect.
 ///
-/// Owns the content signal, the currently encoded [`BarcodeSource`], and the
-/// pending value delivered by the watcher; consumers call
-/// [`Self::take_reencoded`] at the start of a frame to pick up new content.
+/// Owns the content signal and the source the watcher has encoded from its
+/// latest value but no frame has adopted yet. Encoding happens in the watcher,
+/// when the content changes, rather than at the next draw: layout measures a
+/// barcode before it is drawn, and [`Self::pending_output_size`] has to answer
+/// with the symbol that is about to be shown, not the one that was. Consumers
+/// call [`Self::take_reencoded`] at the start of a frame to adopt it.
 pub struct ReactiveBarcodeContent {
     symbology: BarcodeSymbology,
     content: Computed<Str>,
-    pending: Rc<RefCell<Option<Str>>>,
+    pending: Rc<RefCell<Option<BarcodeSource>>>,
     guard: Option<BoxWatcherGuard>,
 }
 
@@ -307,23 +322,36 @@ impl ReactiveBarcodeContent {
     }
 
     /// Watches the content signal for the consumer's lifetime; every change
-    /// stores the new value and wakes the surface through `redraw`.
+    /// encodes the new value and wakes the surface through `redraw`. Crashes
+    /// on unencodable content.
     pub fn install(&mut self, redraw: impl Fn() + 'static) {
         let pending = self.pending.clone();
+        let symbology = self.symbology;
         self.guard = Some(self.content.watch(move |ctx| {
-            *pending.borrow_mut() = Some(ctx.value().clone());
+            *pending.borrow_mut() = Some(BarcodeSource::encode_or_panic(
+                symbology,
+                ctx.value().as_ref(),
+            ));
             redraw();
         }));
     }
 
-    /// Takes and encodes a pending content change, if any arrived since the
-    /// last frame. Crashes on unencodable content.
+    /// Takes the source encoded from a content change, if any arrived since
+    /// the last frame.
     pub fn take_reencoded(&mut self) -> Option<BarcodeSource> {
-        let content = self.pending.borrow_mut().take()?;
-        Some(BarcodeSource::encode_or_panic(
-            self.symbology,
-            content.as_ref(),
-        ))
+        self.pending.borrow_mut().take()
+    }
+
+    /// The output size of a source encoded since the last frame, if any.
+    ///
+    /// Layout asks for a barcode's size between the content change and the
+    /// frame that adopts it, and it wants the size of what is about to be
+    /// drawn.
+    pub fn pending_output_size(&self) -> Option<(u32, u32)> {
+        self.pending
+            .borrow()
+            .as_ref()
+            .map(BarcodeSource::output_size)
     }
 }
 
@@ -343,7 +371,7 @@ impl waterui_graphics::image_generator::ImageGenerator for BarcodeSource {
     ) -> waterui_graphics::image_generator::GeneratedImage {
         use waterui_graphics::{OffscreenRenderConfig, OffscreenSize, SceneView, wgpu};
 
-        let (width, height) = self.render_dimensions();
+        let (width, height) = self.output_size();
         let size = OffscreenSize::try_from_pixels(width, height)
             .expect("BarcodeSource::generate: dimensions must be non-zero");
         let config = OffscreenRenderConfig::new(size).format(wgpu::TextureFormat::Rgba8Unorm);
@@ -364,6 +392,36 @@ impl waterui_graphics::image_generator::ImageGenerator for BarcodeSource {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The configured extent is the size on both sides, floored at the module
+    /// grid with its quiet zone so no module can collapse.
+    #[test]
+    fn a_qr_code_is_its_extent_squared_floored_at_its_modules() {
+        let mut source =
+            BarcodeSource::qr("https://waterui.dev").expect("static payload must encode");
+        assert_eq!(source.output_size(), (256, 256));
+
+        let modules = source.matrix().width + source.quiet_zone() * 2;
+        source.set_size(1);
+        assert_eq!(source.output_size(), (modules, modules));
+    }
+
+    /// Code128 fixes no bar height, so the extent is the height and the bar
+    /// count is the width, each floored where a floor exists.
+    #[test]
+    fn a_code128_is_its_bars_wide_and_its_extent_tall() {
+        let mut source =
+            BarcodeSource::code128("HELLO-WATERUI").expect("static payload must encode");
+        let bars = source.matrix().width + source.quiet_zone() * 2;
+        assert!(
+            bars < 256,
+            "the fixture must be narrower than the default extent"
+        );
+        assert_eq!(source.output_size(), (256, 256));
+
+        source.set_size(40);
+        assert_eq!(source.output_size(), (bars, 40));
+    }
 
     #[test]
     fn code128_matrix_stores_one_row_of_modules() {
