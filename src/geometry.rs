@@ -6,8 +6,31 @@
 //! pixel.
 
 use kurbo::{BezPath, Rect};
+use waterui_core::layout::Size;
 
-use crate::qr::BarcodeSource;
+use crate::qr::{BarcodeSource, ReactiveBarcodeContent};
+
+/// The size a barcode *is*, for `SceneContent::intrinsic_size`.
+///
+/// It is [`BarcodeSource::output_size`] at one unit per pixel — the same box
+/// the image generator rasterizes — taken from the source `reactive` has
+/// encoded but no frame has adopted yet when there is one, and from `current`
+/// otherwise. Layout measures between a content change and the frame that
+/// draws it, and wants the symbol that is about to be shown.
+pub fn natural_size(current: &BarcodeSource, reactive: Option<&ReactiveBarcodeContent>) -> Size {
+    let (width, height) = reactive
+        .and_then(ReactiveBarcodeContent::pending_output_size)
+        .unwrap_or_else(|| current.output_size());
+    Size::new(extent_to_units(width), extent_to_units(height))
+}
+
+#[expect(
+    clippy::cast_precision_loss,
+    reason = "an extent past 2^24 units is not a barcode anyone lays out; below it the cast is exact"
+)]
+const fn extent_to_units(extent: u32) -> f32 {
+    extent as f32
+}
 
 /// The rectangle a barcode occupies inside a `width` x `height` surface,
 /// quiet zone included.
@@ -71,9 +94,55 @@ fn push_rect(path: &mut BezPath, rect: Rect) {
 
 #[cfg(test)]
 mod tests {
-    use super::{content_rect, dark_module_path};
-    use crate::BarcodeSource;
+    use super::{content_rect, dark_module_path, extent_to_units, natural_size};
+    use crate::qr::ReactiveBarcodeContent;
+    use crate::{BarcodeSource, BarcodeSymbology};
     use kurbo::{Rect, Shape as _};
+    use nami::signal::IntoComputed as _;
+    use waterui_core::layout::Size;
+    use waterui_core::{Binding, Str};
+
+    /// A static barcode is its output size, at one unit per pixel.
+    #[test]
+    fn a_static_barcode_measures_at_its_output_size() {
+        let mut source = BarcodeSource::code128("HELLO").expect("static payload must encode");
+        source.set_size(40);
+        let (width, height) = source.output_size();
+
+        assert_eq!(
+            natural_size(&source, None),
+            Size::new(extent_to_units(width), extent_to_units(height))
+        );
+    }
+
+    /// Between a content change and the frame that adopts it, the size is the
+    /// symbol about to be drawn, not the one on screen: layout asks in that gap.
+    #[test]
+    fn a_pending_symbol_wins_over_the_one_on_screen() {
+        let content = Binding::container(Str::from_static("A"));
+        let mut reactive =
+            ReactiveBarcodeContent::new(BarcodeSymbology::Code128, content.clone().into_computed());
+        let mut current = reactive.initial_source();
+        current.set_size(1);
+        let (narrow, _) = current.output_size();
+        reactive.install(|| {});
+
+        assert_eq!(
+            natural_size(&current, Some(&reactive)),
+            natural_size(&current, None),
+            "with no pending symbol the one on screen is the answer"
+        );
+
+        content.set(Str::from_static("A MUCH LONGER PAYLOAD"));
+        let measured = natural_size(&current, Some(&reactive));
+        let adopted = reactive
+            .take_reencoded()
+            .expect("a content change must leave a source to adopt");
+        let (wide, _) = adopted.output_size();
+        assert!(wide > narrow, "the fixture must change the bar count");
+        assert_eq!(measured, natural_size(&adopted, None));
+        assert_eq!(natural_size(&adopted, Some(&reactive)), measured);
+    }
 
     #[test]
     fn qr_content_is_the_centred_square() {

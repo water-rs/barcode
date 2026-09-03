@@ -5,14 +5,15 @@ use core::fmt;
 use kurbo::{Affine, BezPath, Point, Rect};
 use nami::{SignalExt as _, signal::IntoComputed};
 use peniko::{Brush, ColorStop, Fill, Gradient};
+use waterui_core::layout::{Size, UnitPoint};
 use waterui_core::reactive::watcher::BoxWatcherGuard;
-use waterui_core::{Computed, Environment, Signal as _, Str, flatten_signal, layout::UnitPoint};
+use waterui_core::{Computed, Environment, Signal as _, Str, flatten_signal};
 use waterui_graphics::{
     Scene2D, SceneContent, SceneInvalidator,
     color::{Color, ResolvedColor, Srgb},
 };
 
-use crate::geometry::{content_rect, dark_module_path};
+use crate::geometry::{content_rect, dark_module_path, natural_size};
 use crate::qr::ReactiveBarcodeContent;
 use crate::{BarcodeSource, BarcodeSymbology, view::BarcodeFill};
 
@@ -212,6 +213,10 @@ impl BarcodeRenderer {
 }
 
 impl SceneContent for BarcodeRenderer {
+    fn intrinsic_size(&self) -> Option<Size> {
+        Some(natural_size(&self.source, self.reactive_content.as_ref()))
+    }
+
     fn build_scene(&mut self, scene: &mut dyn Scene2D, width: f32, height: f32) -> bool {
         if let Some(source) = self
             .reactive_content
