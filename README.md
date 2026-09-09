@@ -11,6 +11,17 @@ Rasterizing a barcode into a standalone image needs a GPU device, so the
 `ImageGenerator` implementation for `BarcodeSource` sits behind the non-default
 `gpu` feature. Drawing a barcode into a view does not.
 
+## Example
+
+`examples/barcode` is a WaterUI playground that renders the symbologies this
+crate supports. It is a member of this workspace, so it builds against the
+component source in this repository:
+
+```bash
+cd examples/barcode
+water run --platform macos
+```
+
 ## License
 
 Licensed under either of
