@@ -1,14 +1,25 @@
-//! GPU-accelerated barcode rendering.
+//! Barcode and QR code rendering for `WaterUI`.
 //!
-//! This crate provides barcode generation and GPU rendering.
-//! Encoded module data is packed into a bit buffer and rasterized directly
-//! on GPU each frame.
+//! Barcodes are drawn as vector geometry through `waterui-graphics`'
+//! engine-neutral [`Scene2D`] contract, so one implementation renders on the
+//! GPU compute renderer, the CPU sparse-strip renderer used on embedded
+//! targets, and any backend that owns its own scene.
+//!
+//! [`Scene2D`]: waterui_graphics::Scene2D
 //!
 //! # Architecture
 //!
-//! 1. **Matrix Generation**: encoders generate module matrix data
-//! 2. **GPU Upload**: Matrix data is packed into bits and uploaded to a storage buffer
-//! 3. **Fragment Shader**: Renders barcodes at any resolution directly on GPU
+//! 1. **Matrix generation**: encoders produce the module matrix on CPU.
+//! 2. **Geometry**: dark modules become one filled path, with horizontally
+//!    adjacent modules collapsed into a single rectangle per bar.
+//! 3. **Scene**: that path is filled through [`Scene2D::fill`], leaving
+//!    resolution, anti-aliasing, and rasterization to the renderer.
+//!
+//! [`Scene2D::fill`]: waterui_graphics::Scene2D::fill
+//!
+//! Rasterizing a barcode into a standalone image needs a GPU device, so the
+//! `ImageGenerator` implementation for [`BarcodeSource`] sits behind the
+//! non-default `gpu` feature. Drawing a barcode into a view does not.
 //!
 //! # Example
 //!
@@ -22,13 +33,13 @@
 //! Barcode::code128("HELLO-WATERUI")
 //! ```
 
-mod effect;
+mod geometry;
+mod mask;
 mod qr;
 mod renderer;
-mod shaders;
 mod view;
 
-pub use effect::BarcodeMaskEffect;
+pub use mask::BarcodeMask;
 pub use qr::{BarcodeError, BarcodeMatrix, BarcodeSource, BarcodeSymbology};
 pub use renderer::BarcodeRenderer;
-pub use view::{Barcode, BarcodeFill, BarcodeGpuFill, code128, qr_code};
+pub use view::{Barcode, BarcodeFill, BarcodeSceneFill, code128, qr_code};

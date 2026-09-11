@@ -1,3 +1,7 @@
+[workspace]
+members = ["examples/barcode"]
+resolver = "2"
+
 [package]
 name = "waterui-barcode"
 version = "0.1.0"
@@ -8,8 +12,15 @@ license = "Apache-2.0 OR MIT"
 readme = "README.md"
 repository = "https://github.com/water-rs/barcode"
 description = "WaterUI barcode and QR code component"
-keywords = ["gpu", "barcode", "qrcode", "waterui"]
+keywords = ["vector", "barcode", "qrcode", "waterui"]
 categories = ["graphics", "rendering", "gui"]
+
+[features]
+default = []
+# Rasterizing a barcode into a `GeneratedImage` needs a GPU device, so the
+# `ImageGenerator` implementation is the one part of this crate that pulls
+# `waterui-graphics`' GPU stack. Drawing a barcode into a scene does not.
+gpu = ["waterui-graphics/gpu"]
 
 [lints.rust]
 missing_docs = "warn"
@@ -30,23 +41,75 @@ multiple_crate_versions = "allow"
 
 [dependencies]
 nami = "0.11.0"
-waterui-core = { version = "0.3.0", git = "https://github.com/water-rs/waterui.git", branch = "dev" }
-waterui-graphics = { version = "0.3.0", git = "https://github.com/water-rs/waterui.git", branch = "dev", features = ["gpu"] }
-shaderloom = "0.1.0"
-wgpu = "29.0.4"
-bytemuck = { version = "1.25", features = ["derive"] }
+waterui-core = "0.3.0"
+waterui-graphics = { version = "0.4.0", default-features = false }
+kurbo = "0.13"
+peniko = "0.6"
 fast_qr = "0.13"
 barcoders = { version = "2.0.0", default-features = false }
 thiserror = "2.0.19"
 
-[build-dependencies]
-shaderloom = { version = "0.1.0", features = ["build"] }
-
 [dev-dependencies]
 pollster = "1.0"
 rxing = { version = "0.9.2", default-features = false, features = ["decoders", "encoding_rs", "oned", "qrcode"] }
-waterui = { git = "https://github.com/water-rs/waterui.git", branch = "dev" }
-waterui-testing = { git = "https://github.com/water-rs/waterui.git", branch = "dev" }
+waterui = "0.4.0"
+waterui-testing = "0.4.0"
+# The layout tests mount a scroll view, whose scrollbars need a widget theme the
+# default test theme does not carry.
+hydrolysis-m3 = "0.1.1"
+# The offscreen round-trip tests rasterize the scene through a real GPU
+# surface, which is `waterui-graphics`' `gpu` half rather than the scene
+# contract the library itself draws through.
+waterui-graphics = { version = "0.4.0", features = ["gpu"] }
 
-[package.metadata.cargo-machete]
-ignored = ["shaderloom"]
+# Development and CI certify one immutable WaterUI foundation revision: every
+# framework package in the graph comes from the same commit, and the framework's
+# own dependency patches are mirrored so the graph matches what that commit
+# builds. The published requirements above remain the distribution contract;
+# Cargo only applies patches from the consuming graph's root manifest.
+
+[patch.crates-io]
+# Tests and examples link the framework; every workspace crate comes from the
+# same monorepo commit so the graph carries exactly one copy of each.
+waterui-barcode = { path = "." }
+hydrolysis = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+hydrolysis-m3 = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-assets = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-assets-macros = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-assets-planner = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-backend-core = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-controls = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-core = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-dylib = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-form = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-graphics = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-icon = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-inspector-protocol = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-internal = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-layout = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-locale = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-macros = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-map = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-media = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-navigation = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-preview-protocol = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-shape = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-str = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-svg = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-testing = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-text = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-url = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-video = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-watcher-set = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+waterui-webview = { git = "https://github.com/water-rs/waterui.git", rev = "c6df302408b42f18be1ea7692d0438973f1e0e62" }
+# Sibling extracted crates until they release against the 0.4 foundation (waterui#533).
+waterui-image = { git = "https://github.com/water-rs/image", branch = "chore/foundation-0.4" }
+# Third-party forks the monorepo itself patches; git dependencies do not carry
+# their own patch table, so they are repeated here.
+block = { git = "https://github.com/Dicklesworthstone/rust-block", rev = "b39ae859d1ee8e8cb5eef6a516471f1578d26b96" }
+vello = { git = "https://github.com/lexoliu/vello", rev = "5e5f538556be16527f67379b105af82f408b747d" }
+vello_hybrid = { git = "https://github.com/lexoliu/vello", rev = "d68d9e9825bcd1ffee762323881c13a2e7a3f639" }
+vello_common = { git = "https://github.com/lexoliu/vello", rev = "d68d9e9825bcd1ffee762323881c13a2e7a3f639" }
+vello_sparse_shaders = { git = "https://github.com/lexoliu/vello", rev = "d68d9e9825bcd1ffee762323881c13a2e7a3f639" }
+glifo = { git = "https://github.com/lexoliu/vello", rev = "d68d9e9825bcd1ffee762323881c13a2e7a3f639" }

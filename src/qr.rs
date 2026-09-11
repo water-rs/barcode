@@ -1,4 +1,4 @@
-//! Barcode matrix generation for GPU rendering.
+//! Barcode matrix generation.
 
 use barcoders::sym::code128::Code128;
 use core::cell::RefCell;
@@ -6,9 +6,6 @@ use core::fmt;
 use std::rc::Rc;
 use waterui_core::reactive::watcher::BoxWatcherGuard;
 use waterui_core::{Computed, Signal, Str};
-use waterui_graphics::{GpuRuntime, GpuSurface, OffscreenRenderConfig, OffscreenSize};
-
-use crate::BarcodeRenderer;
 
 /// An error produced when barcode content cannot be encoded.
 #[derive(Debug, thiserror::Error)]
@@ -39,16 +36,17 @@ pub enum BarcodeSymbology {
 
 /// A barcode data source.
 ///
-/// Encodes module data once during construction; rasterization happens on GPU.
+/// Encodes module data once during construction; placement and rasterization
+/// happen when the barcode is drawn into a scene.
 #[derive(Clone)]
 pub struct BarcodeSource {
     symbology: BarcodeSymbology,
     matrix: BarcodeMatrix,
-    /// Output size in pixels
+    /// Output extent, in units; see [`Self::set_size`].
     size: u32,
 }
 
-/// Barcode matrix data packed for GPU consumption.
+/// Barcode module data, one bit per module.
 #[derive(Debug, Clone)]
 pub struct BarcodeMatrix {
     /// Matrix width in modules.
@@ -62,6 +60,25 @@ pub struct BarcodeMatrix {
     /// Bit 0 of word 0 = module (0,0), bit 1 = module (1,0), etc.
     /// 1 = dark module, 0 = light module
     pub packed_data: Vec<u32>,
+}
+
+impl BarcodeMatrix {
+    /// Returns whether the module at `(x, y)` is dark.
+    ///
+    /// # Panics
+    ///
+    /// Panics when `(x, y)` lies outside the matrix.
+    #[must_use]
+    pub fn is_dark(&self, x: u32, y: u32) -> bool {
+        assert!(
+            x < self.width && y < self.height,
+            "module ({x}, {y}) is outside a {}x{} barcode matrix",
+            self.width,
+            self.height
+        );
+        let index = (y * self.width + x) as usize;
+        (self.packed_data[index / 32] >> (index % 32)) & 1 == 1
+    }
 }
 
 impl fmt::Debug for BarcodeSource {
@@ -119,12 +136,16 @@ impl BarcodeSource {
         })
     }
 
-    /// Sets the output size in pixels.
+    /// Sets the output extent, in units.
+    ///
+    /// This is the size the barcode *is* when nothing else decides: the pixel
+    /// size the image generator rasterizes at, and the natural size the scene
+    /// contents report to layout through [`Self::output_size`].
     pub const fn set_size(&mut self, size: u32) {
         self.size = size;
     }
 
-    /// Returns the output size.
+    /// Returns the output extent set by [`Self::set_size`].
     #[must_use]
     pub const fn size(&self) -> u32 {
         self.size
@@ -203,7 +224,18 @@ impl BarcodeSource {
         })
     }
 
-    fn render_dimensions(&self) -> (u32, u32) {
+    /// The size this barcode is, in units: the extent [`Self::size`] asks for,
+    /// floored at one unit per module (quiet zone included) so no module can
+    /// collapse.
+    ///
+    /// A QR code is that extent on both sides. A Code128 symbol is its bar
+    /// count wide, floored at the extent, and the extent tall — the symbology
+    /// fixes no bar height, so the configured extent is the one there is.
+    /// The image generator rasterizes at exactly this, in pixels, and the scene
+    /// contents answer it from `SceneContent::intrinsic_size`, in points, so a
+    /// barcode measures the same on both paths.
+    #[must_use]
+    pub fn output_size(&self) -> (u32, u32) {
         let quiet_zone = self.quiet_zone();
         let configured_size = self.size;
         let matrix = self.matrix();
@@ -253,13 +285,16 @@ impl BarcodeSource {
 
 /// Signal-driven barcode content shared by the renderer and the mask effect.
 ///
-/// Owns the content signal, the currently encoded [`BarcodeSource`], and the
-/// pending value delivered by the watcher; consumers call
-/// [`Self::take_reencoded`] at the start of a frame to pick up new content.
+/// Owns the content signal and the source the watcher has encoded from its
+/// latest value but no frame has adopted yet. Encoding happens in the watcher,
+/// when the content changes, rather than at the next draw: layout measures a
+/// barcode before it is drawn, and [`Self::pending_output_size`] has to answer
+/// with the symbol that is about to be shown, not the one that was. Consumers
+/// call [`Self::take_reencoded`] at the start of a frame to adopt it.
 pub struct ReactiveBarcodeContent {
     symbology: BarcodeSymbology,
     content: Computed<Str>,
-    pending: Rc<RefCell<Option<Str>>>,
+    pending: Rc<RefCell<Option<BarcodeSource>>>,
     guard: Option<BoxWatcherGuard>,
 }
 
@@ -287,41 +322,62 @@ impl ReactiveBarcodeContent {
     }
 
     /// Watches the content signal for the consumer's lifetime; every change
-    /// stores the new value and wakes the surface through `redraw`.
+    /// encodes the new value and wakes the surface through `redraw`. Crashes
+    /// on unencodable content.
     pub fn install(&mut self, redraw: impl Fn() + 'static) {
         let pending = self.pending.clone();
+        let symbology = self.symbology;
         self.guard = Some(self.content.watch(move |ctx| {
-            *pending.borrow_mut() = Some(ctx.value().clone());
+            *pending.borrow_mut() = Some(BarcodeSource::encode_or_panic(
+                symbology,
+                ctx.value().as_ref(),
+            ));
             redraw();
         }));
     }
 
-    /// Takes and encodes a pending content change, if any arrived since the
-    /// last frame. Crashes on unencodable content.
+    /// Takes the source encoded from a content change, if any arrived since
+    /// the last frame.
     pub fn take_reencoded(&mut self) -> Option<BarcodeSource> {
-        let content = self.pending.borrow_mut().take()?;
-        Some(BarcodeSource::encode_or_panic(
-            self.symbology,
-            content.as_ref(),
-        ))
+        self.pending.borrow_mut().take()
+    }
+
+    /// The output size of a source encoded since the last frame, if any.
+    ///
+    /// Layout asks for a barcode's size between the content change and the
+    /// frame that adopts it, and it wants the size of what is about to be
+    /// drawn.
+    pub fn pending_output_size(&self) -> Option<(u32, u32)> {
+        self.pending
+            .borrow()
+            .as_ref()
+            .map(BarcodeSource::output_size)
     }
 }
 
+/// Rasterizes a barcode scene into a standalone image.
+///
+/// This is the one part of the crate that needs a GPU device: everything else
+/// draws through the engine-neutral scene contract.
+#[cfg(feature = "gpu")]
 impl waterui_graphics::image_generator::ImageGenerator for BarcodeSource {
     #[expect(
         clippy::future_not_send,
-        reason = "barcode generation awaits the UI-local offscreen GpuView environment"
+        reason = "barcode generation awaits the UI-local offscreen scene environment"
     )]
     async fn generate(
         &self,
-        runtime: &GpuRuntime,
+        runtime: &waterui_graphics::GpuRuntime,
     ) -> waterui_graphics::image_generator::GeneratedImage {
-        let (width, height) = self.render_dimensions();
+        use waterui_graphics::{OffscreenRenderConfig, OffscreenSize, SceneView, wgpu};
+
+        let (width, height) = self.output_size();
         let size = OffscreenSize::try_from_pixels(width, height)
             .expect("BarcodeSource::generate: dimensions must be non-zero");
         let config = OffscreenRenderConfig::new(size).format(wgpu::TextureFormat::Rgba8Unorm);
         let mut env = waterui_core::Environment::new();
-        let output = GpuSurface::new(BarcodeRenderer::new(self.clone()))
+        let output = SceneView::new(crate::BarcodeRenderer::new(self.clone(), &env))
+            .into_gpu_surface()
             .render_offscreen(runtime, config, &mut env)
             .await
             .expect("BarcodeSource::generate: GPU offscreen render should succeed");
@@ -336,7 +392,36 @@ impl waterui_graphics::image_generator::ImageGenerator for BarcodeSource {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use waterui_graphics::image_generator::ImageGenerator;
+
+    /// The configured extent is the size on both sides, floored at the module
+    /// grid with its quiet zone so no module can collapse.
+    #[test]
+    fn a_qr_code_is_its_extent_squared_floored_at_its_modules() {
+        let mut source =
+            BarcodeSource::qr("https://waterui.dev").expect("static payload must encode");
+        assert_eq!(source.output_size(), (256, 256));
+
+        let modules = source.matrix().width + source.quiet_zone() * 2;
+        source.set_size(1);
+        assert_eq!(source.output_size(), (modules, modules));
+    }
+
+    /// Code128 fixes no bar height, so the extent is the height and the bar
+    /// count is the width, each floored where a floor exists.
+    #[test]
+    fn a_code128_is_its_bars_wide_and_its_extent_tall() {
+        let mut source =
+            BarcodeSource::code128("HELLO-WATERUI").expect("static payload must encode");
+        let bars = source.matrix().width + source.quiet_zone() * 2;
+        assert!(
+            bars < 256,
+            "the fixture must be narrower than the default extent"
+        );
+        assert_eq!(source.output_size(), (256, 256));
+
+        source.set_size(40);
+        assert_eq!(source.output_size(), (bars, 40));
+    }
 
     #[test]
     fn code128_matrix_stores_one_row_of_modules() {
@@ -361,8 +446,11 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "gpu")]
     #[test]
     fn qr_generator_produces_expected_size_and_pixels() {
+        use waterui_graphics::{GpuRuntime, image_generator::ImageGenerator as _};
+
         let runtime = pollster::block_on(GpuRuntime::new())
             .expect("barcode tests require a working GPU runtime");
         let mut source =
@@ -376,8 +464,11 @@ mod tests {
         assert_eq!(image.rgba8().len(), 192 * 192 * 4);
     }
 
+    #[cfg(feature = "gpu")]
     #[test]
     fn code128_generator_produces_expected_size_and_pixels() {
+        use waterui_graphics::{GpuRuntime, image_generator::ImageGenerator as _};
+
         let runtime = pollster::block_on(GpuRuntime::new())
             .expect("barcode tests require a working GPU runtime");
         let mut source =
