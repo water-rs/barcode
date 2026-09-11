@@ -42,7 +42,7 @@ multiple_crate_versions = "allow"
 [dependencies]
 nami = "0.11.0"
 waterui-core = "0.3.0"
-waterui-graphics = { version = "0.3.0", default-features = false }
+waterui-graphics = { version = "0.4.0", default-features = false }
 kurbo = "0.13"
 peniko = "0.6"
 fast_qr = "0.13"
@@ -53,14 +53,14 @@ thiserror = "2.0.19"
 pollster = "1.0"
 rxing = { version = "0.9.2", default-features = false, features = ["decoders", "encoding_rs", "oned", "qrcode"] }
 waterui = "0.3.0"
-waterui-testing = "0.3.0"
+waterui-testing = "0.4.0"
 # The layout tests mount a scroll view, whose scrollbars need a widget theme the
 # default test theme does not carry.
 hydrolysis-m3 = "0.1.0"
 # The offscreen round-trip tests rasterize the scene through a real GPU
 # surface, which is `waterui-graphics`' `gpu` half rather than the scene
 # contract the library itself draws through.
-waterui-graphics = { version = "0.3.0", features = ["gpu"] }
+waterui-graphics = { version = "0.4.0", features = ["gpu"] }
 
 # Development and CI certify one immutable WaterUI foundation revision: every
 # framework package in the graph comes from the same commit, and the framework's
