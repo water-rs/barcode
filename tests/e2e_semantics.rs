@@ -10,14 +10,12 @@ fn qr_barcode_view() -> impl waterui::View {
 
 #[waterui::test(qr_barcode_view)]
 fn qr_barcode_exposes_accessible_image_node(app: &mut SemanticApp) {
-    let node = app
-        .query()
+    // The semantic tree answers identity, not geometry: the size a barcode
+    // takes is `tests/intrinsic_size.rs`' business on the rendered runtime.
+    app.query()
         .role(Role::IMAGE)
         .label("QR code: https://waterui.dev/testing")
-        .single();
-    let bounds = node.bounds();
-    assert!(bounds.width() > 0.0, "barcode-qr: width must be positive");
-    assert!(bounds.height() > 0.0, "barcode-qr: height must be positive");
+        .assert_exists();
 }
 
 fn code128_barcode_view() -> impl waterui::View {
@@ -26,18 +24,8 @@ fn code128_barcode_view() -> impl waterui::View {
 
 #[waterui::test(code128_barcode_view)]
 fn code128_barcode_exposes_accessible_image_node(app: &mut SemanticApp) {
-    let node = app
-        .query()
+    app.query()
         .role(Role::IMAGE)
         .label("Code 128 barcode: HELLO-WATERUI-128")
-        .single();
-    let bounds = node.bounds();
-    assert!(
-        bounds.width() > 0.0,
-        "barcode-code128: width must be positive"
-    );
-    assert!(
-        bounds.height() > 0.0,
-        "barcode-code128: height must be positive"
-    );
+        .assert_exists();
 }
