@@ -6924,7 +6924,7 @@ dependencies = [
 
 [[package]]
 name = "waterui-barcode"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "barcoders",
  "fast_qr",
