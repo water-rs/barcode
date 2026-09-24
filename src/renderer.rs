@@ -51,7 +51,7 @@ impl ResolvedFill {
     /// are mapped onto `area` rather than onto the whole surface.
     fn brush(&self, area: Rect) -> Brush {
         match self {
-            Self::Solid(color) => Brush::Solid(to_peniko(&color.get())),
+            Self::Solid(color) => Brush::Solid(to_peniko(&color.snapshot())),
             Self::LinearGradient {
                 start,
                 end,
@@ -67,11 +67,11 @@ impl ResolvedFill {
                 let stops = [
                     ColorStop {
                         offset: 0.0,
-                        color: to_peniko(&start.get()).into(),
+                        color: to_peniko(&start.snapshot()).into(),
                     },
                     ColorStop {
                         offset: 1.0,
-                        color: to_peniko(&end.get()).into(),
+                        color: to_peniko(&end.snapshot()).into(),
                     },
                 ];
                 Brush::Gradient(
@@ -232,7 +232,7 @@ impl SceneContent for BarcodeRenderer {
         fill_rect(
             scene,
             surface,
-            &Brush::Solid(to_peniko(&self.light_color.get())),
+            &Brush::Solid(to_peniko(&self.light_color.snapshot())),
         );
 
         let area = content_rect(&self.source, surface.width(), surface.height());
