@@ -2036,7 +2036,7 @@ dependencies = [
 [[package]]
 name = "hydrolysis-m3"
 version = "0.3.1"
-source = "git+https://github.com/water-rs/hydrolysis-m3?rev=3c938632f9fecb1003294bbc4e5a6e55cf72ab94#3c938632f9fecb1003294bbc4e5a6e55cf72ab94"
+source = "git+https://github.com/water-rs/hydrolysis-m3?rev=c3b5a4bbdb68a6de065054a54b70de86568240eb#c3b5a4bbdb68a6de065054a54b70de86568240eb"
 dependencies = [
  "hydrolysis",
  "material-color-utils",
@@ -5982,7 +5982,7 @@ dependencies = [
 [[package]]
 name = "waterui-image"
 version = "0.5.0"
-source = "git+https://github.com/water-rs/image?rev=f834158df7e2e95c8102692a527b7c8683d04663#f834158df7e2e95c8102692a527b7c8683d04663"
+source = "git+https://github.com/water-rs/image?rev=cddf79cfd1784c41af0f2bdf8f95092e357fcf50#cddf79cfd1784c41af0f2bdf8f95092e357fcf50"
 dependencies = [
  "half",
  "image",
