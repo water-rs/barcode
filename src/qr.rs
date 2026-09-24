@@ -318,7 +318,7 @@ impl ReactiveBarcodeContent {
 
     /// Encodes the signal's current value, crashing on unencodable content.
     pub fn initial_source(&self) -> BarcodeSource {
-        BarcodeSource::encode_or_panic(self.symbology, self.content.get().as_ref())
+        BarcodeSource::encode_or_panic(self.symbology, self.content.snapshot().as_ref())
     }
 
     /// Watches the content signal for the consumer's lifetime; every change
