@@ -103,7 +103,7 @@ impl<C: SceneContent> SceneContent for BarcodeMask<C> {
         fill_rect(
             scene,
             surface,
-            &Brush::Solid(to_peniko(&self.light_color.get())),
+            &Brush::Solid(to_peniko(&self.light_color.snapshot())),
         );
 
         let area = content_rect(&self.source, surface.width(), surface.height());
