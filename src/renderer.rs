@@ -55,7 +55,7 @@ impl ResolvedFill {
                 start
                     .clone()
                     .zip(end)
-                    .map(move |(start, end)| {
+                    .map(move |(start, end)| -> Paint {
                         LinearGradient::new(from, to)
                             .stop(0.0, start)
                             .stop(1.0, end)
