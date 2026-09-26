@@ -4,7 +4,10 @@ use std::path::PathBuf;
 
 use rxing::BarcodeFormat;
 use waterui_barcode::{BarcodeRenderer, BarcodeSource};
-use waterui_graphics::{GpuRuntime, OffscreenRenderConfig, OffscreenSize, SceneView, wgpu};
+use waterui_graphics::{
+    cherenkov_gpu::Gpu,
+    offscreen::{OffscreenRenderer, OffscreenSize},
+};
 
 mod support;
 
@@ -17,21 +20,16 @@ fn generate_code128_png_offscreen() {
         PathBuf::from,
     );
 
-    let mut env = waterui_core::Environment::new();
-    let renderer = BarcodeRenderer::new(
+    let env = waterui_core::Environment::new();
+    let mut renderer = BarcodeRenderer::new(
         BarcodeSource::code128(content.clone()).expect("static test payload must encode"),
         &env,
     );
     let size = OffscreenSize::try_from_pixels(1024, 256).expect("valid output size");
-    let config = OffscreenRenderConfig::new(size).format(wgpu::TextureFormat::Rgba8Unorm);
-    let runtime = pollster::block_on(GpuRuntime::new())
-        .expect("Code128 export test requires a working GPU runtime");
-    let output = pollster::block_on(
-        SceneView::new(renderer)
-            .into_gpu_surface()
-            .render_offscreen(&runtime, config, &mut env),
-    )
-    .expect("offscreen Code128 render should succeed");
+    let runtime = OffscreenRenderer::<Gpu>::new().expect("barcode tests require a GPU engine");
+    let output = runtime
+        .render(&mut renderer, size, 1.0)
+        .expect("barcode offscreen rendering failed");
     assert_eq!(
         output.rgba8.len(),
         (output.width * output.height * 4) as usize

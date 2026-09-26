@@ -2,9 +2,9 @@ use rxing::{
     BarcodeFormat, BinaryBitmap, DecodeHints, Luma8LuminanceSource, MultiFormatReader, Reader,
     common::HybridBinarizer,
 };
-use waterui_graphics::OffscreenRenderOutput;
+use waterui_graphics::offscreen::OffscreenImage;
 
-pub fn decode(output: &OffscreenRenderOutput, format: BarcodeFormat) -> String {
+pub fn decode(output: &OffscreenImage, format: BarcodeFormat) -> String {
     let luminance = output
         .rgba8
         .as_chunks::<4>()

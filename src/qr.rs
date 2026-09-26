@@ -1,11 +1,9 @@
 //! Barcode matrix generation.
 
 use barcoders::sym::code128::Code128;
-use core::cell::RefCell;
 use core::fmt;
-use std::rc::Rc;
-use waterui_core::reactive::watcher::BoxWatcherGuard;
-use waterui_core::{Computed, Signal, Str};
+use nami::{SignalExt as _, signal::IntoComputed as _};
+use waterui_core::{Computed, Str};
 
 /// An error produced when barcode content cannot be encoded.
 #[derive(Debug, thiserror::Error)]
@@ -45,6 +43,8 @@ pub struct BarcodeSource {
     /// Output extent, in units; see [`Self::set_size`].
     size: u32,
 }
+
+nami::impl_constant!(BarcodeSource);
 
 /// Barcode module data, one bit per module.
 #[derive(Debug, Clone)]
@@ -283,76 +283,14 @@ impl BarcodeSource {
     }
 }
 
-/// Signal-driven barcode content shared by the renderer and the mask effect.
-///
-/// Owns the content signal and the source the watcher has encoded from its
-/// latest value but no frame has adopted yet. Encoding happens in the watcher,
-/// when the content changes, rather than at the next draw: layout measures a
-/// barcode before it is drawn, and [`Self::pending_output_size`] has to answer
-/// with the symbol that is about to be shown, not the one that was. Consumers
-/// call [`Self::take_reencoded`] at the start of a frame to adopt it.
-pub struct ReactiveBarcodeContent {
+/// Encoded module data derived from the payload signal without a staging slot.
+pub fn reactive_source(
     symbology: BarcodeSymbology,
     content: Computed<Str>,
-    pending: Rc<RefCell<Option<BarcodeSource>>>,
-    guard: Option<BoxWatcherGuard>,
-}
-
-impl fmt::Debug for ReactiveBarcodeContent {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ReactiveBarcodeContent")
-            .field("symbology", &self.symbology)
-            .finish_non_exhaustive()
-    }
-}
-
-impl ReactiveBarcodeContent {
-    pub fn new(symbology: BarcodeSymbology, content: Computed<Str>) -> Self {
-        Self {
-            symbology,
-            content,
-            pending: Rc::new(RefCell::new(None)),
-            guard: None,
-        }
-    }
-
-    /// Encodes the signal's current value, crashing on unencodable content.
-    pub fn initial_source(&self) -> BarcodeSource {
-        BarcodeSource::encode_or_panic(self.symbology, self.content.snapshot().as_ref())
-    }
-
-    /// Watches the content signal for the consumer's lifetime; every change
-    /// encodes the new value and wakes the surface through `redraw`. Crashes
-    /// on unencodable content.
-    pub fn install(&mut self, redraw: impl Fn() + 'static) {
-        let pending = self.pending.clone();
-        let symbology = self.symbology;
-        self.guard = Some(self.content.watch(move |ctx| {
-            *pending.borrow_mut() = Some(BarcodeSource::encode_or_panic(
-                symbology,
-                ctx.value().as_ref(),
-            ));
-            redraw();
-        }));
-    }
-
-    /// Takes the source encoded from a content change, if any arrived since
-    /// the last frame.
-    pub fn take_reencoded(&mut self) -> Option<BarcodeSource> {
-        self.pending.borrow_mut().take()
-    }
-
-    /// The output size of a source encoded since the last frame, if any.
-    ///
-    /// Layout asks for a barcode's size between the content change and the
-    /// frame that adopts it, and it wants the size of what is about to be
-    /// drawn.
-    pub fn pending_output_size(&self) -> Option<(u32, u32)> {
-        self.pending
-            .borrow()
-            .as_ref()
-            .map(BarcodeSource::output_size)
-    }
+) -> Computed<BarcodeSource> {
+    content
+        .map(move |value| BarcodeSource::encode_or_panic(symbology, value.as_ref()))
+        .into_computed()
 }
 
 /// Rasterizes a barcode scene into a standalone image.
@@ -360,32 +298,29 @@ impl ReactiveBarcodeContent {
 /// This is the one part of the crate that needs a GPU device: everything else
 /// draws through the engine-neutral scene contract.
 #[cfg(feature = "gpu")]
-impl waterui_graphics::image_generator::ImageGenerator for BarcodeSource {
-    #[expect(
-        clippy::future_not_send,
-        reason = "barcode generation awaits the UI-local offscreen scene environment"
-    )]
-    async fn generate(
+impl BarcodeSource {
+    /// Rasterizes this barcode through the engine's offscreen target.
+    ///
+    /// # Panics
+    /// When the output is empty or offscreen rendering fails.
+    pub fn generate(
         &self,
-        runtime: &waterui_graphics::GpuRuntime,
-    ) -> waterui_graphics::image_generator::GeneratedImage {
-        use waterui_graphics::{OffscreenRenderConfig, OffscreenSize, SceneView, wgpu};
-
+        renderer: &waterui_graphics::offscreen::OffscreenRenderer<
+            waterui_graphics::cherenkov_gpu::Gpu,
+        >,
+    ) -> waterui_graphics::offscreen::OffscreenImage {
+        use waterui_graphics::offscreen::OffscreenSize;
         let (width, height) = self.output_size();
         let size = OffscreenSize::try_from_pixels(width, height)
-            .expect("BarcodeSource::generate: dimensions must be non-zero");
-        let config = OffscreenRenderConfig::new(size).format(wgpu::TextureFormat::Rgba8Unorm);
-        let mut env = waterui_core::Environment::new();
-        let output = SceneView::new(crate::BarcodeRenderer::new(self.clone(), &env))
-            .into_gpu_surface()
-            .render_offscreen(runtime, config, &mut env)
-            .await
-            .expect("BarcodeSource::generate: GPU offscreen render should succeed");
-        waterui_graphics::image_generator::GeneratedImage::from_rgba8(
-            output.width,
-            output.height,
-            output.rgba8,
-        )
+            .expect("barcode dimensions must be nonzero");
+        let env = waterui_core::Environment::new();
+        renderer
+            .render(
+                &mut crate::BarcodeRenderer::new(self.clone(), &env),
+                size,
+                1.0,
+            )
+            .expect("barcode offscreen rendering failed")
     }
 }
 
@@ -449,39 +384,39 @@ mod tests {
     #[cfg(feature = "gpu")]
     #[test]
     fn qr_generator_produces_expected_size_and_pixels() {
-        use waterui_graphics::{GpuRuntime, image_generator::ImageGenerator as _};
+        use waterui_graphics::{cherenkov_gpu::Gpu, offscreen::OffscreenRenderer};
 
-        let runtime = pollster::block_on(GpuRuntime::new())
-            .expect("barcode tests require a working GPU runtime");
+        let runtime =
+            OffscreenRenderer::<Gpu>::new().expect("barcode tests require a working GPU runtime");
         let mut source =
             BarcodeSource::qr("https://waterui.dev").expect("static test payload must encode");
         source.set_size(192);
 
-        let image = pollster::block_on(source.generate(&runtime));
+        let image = source.generate(&runtime);
 
-        assert_eq!(image.width(), 192);
-        assert_eq!(image.height(), 192);
-        assert_eq!(image.rgba8().len(), 192 * 192 * 4);
+        assert_eq!(image.width, 192);
+        assert_eq!(image.height, 192);
+        assert_eq!(image.rgba8.len(), 192 * 192 * 4);
     }
 
     #[cfg(feature = "gpu")]
     #[test]
     fn code128_generator_produces_expected_size_and_pixels() {
-        use waterui_graphics::{GpuRuntime, image_generator::ImageGenerator as _};
+        use waterui_graphics::{cherenkov_gpu::Gpu, offscreen::OffscreenRenderer};
 
-        let runtime = pollster::block_on(GpuRuntime::new())
-            .expect("barcode tests require a working GPU runtime");
+        let runtime =
+            OffscreenRenderer::<Gpu>::new().expect("barcode tests require a working GPU runtime");
         let mut source =
             BarcodeSource::code128("HELLO-WATERUI").expect("static test payload must encode");
         source.set_size(256);
 
-        let image = pollster::block_on(source.generate(&runtime));
+        let image = source.generate(&runtime);
 
-        assert!(image.width() >= 256);
-        assert_eq!(image.width(), image.height());
+        assert!(image.width >= 256);
+        assert_eq!(image.width, image.height);
         assert_eq!(
-            image.rgba8().len(),
-            image.width() as usize * image.height() as usize * 4
+            image.rgba8.len(),
+            image.width as usize * image.height as usize * 4
         );
     }
 }
