@@ -27,7 +27,7 @@ const CONTENT: &str = "https://waterui.dev/styled";
 struct GradientInk;
 
 impl SceneContent for GradientInk {
-    fn record(&mut self, scene: &mut Scene<'_>) {
+    fn record(&mut self, scene: &mut Scene<'_>) -> bool {
         let (width, height) = (f64::from(scene.width()), f64::from(scene.height()));
         let brush = LinearGradient::new((0.0, 0.0), (width, height))
             .stop(
@@ -41,6 +41,7 @@ impl SceneContent for GradientInk {
         scene
             .recorder()
             .fill(Rect::new(0.0, 0.0, width, height), brush);
+        false
     }
 }
 

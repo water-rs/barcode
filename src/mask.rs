@@ -73,10 +73,10 @@ impl<C: SceneContent> SceneContent for BarcodeMask<C> {
         Some(natural_size(&self.source.snapshot()))
     }
 
-    fn record(&mut self, scene: &mut Scene<'_>) {
+    fn record(&mut self, scene: &mut Scene<'_>) -> bool {
         let (width, height) = (scene.width(), scene.height());
         let Some(surface) = surface_rect(width, height) else {
-            return;
+            return false;
         };
         let modules = self.source.clone().map(move |source| {
             dark_module_path(
@@ -86,10 +86,13 @@ impl<C: SceneContent> SceneContent for BarcodeMask<C> {
         });
         let resources = scene.resources().clone();
         scene.recorder().fill(surface, self.light_color.clone());
+        let mut animated = false;
         scene.recorder().clip(modules, |recorder| {
-            self.ink
+            animated = self
+                .ink
                 .record(&mut Scene::new(recorder, &resources, width, height));
         });
+        animated
     }
 
     fn set_invalidator(&mut self, invalidator: Option<SceneInvalidator>) {

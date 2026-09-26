@@ -152,9 +152,9 @@ impl SceneContent for BarcodeRenderer {
         Some(natural_size(&self.source.snapshot()))
     }
 
-    fn record(&mut self, scene: &mut Scene<'_>) {
+    fn record(&mut self, scene: &mut Scene<'_>) -> bool {
         let Some(surface) = surface_rect(scene.width(), scene.height()) else {
-            return;
+            return false;
         };
         let area = content_rect(&self.source.snapshot(), surface.width(), surface.height());
         scene.recorder().fill(surface, self.light_color.clone());
@@ -167,6 +167,7 @@ impl SceneContent for BarcodeRenderer {
             }),
             self.fill.paint(area),
         );
+        false
     }
 
     fn set_invalidator(&mut self, invalidator: Option<SceneInvalidator>) {
