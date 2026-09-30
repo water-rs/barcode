@@ -1,25 +1,23 @@
 //! Barcode and QR code rendering for `WaterUI`.
 //!
 //! Barcodes are drawn as vector geometry through `waterui-graphics`'
-//! engine-neutral [`Scene2D`] contract, so one implementation renders on the
-//! GPU compute renderer, the CPU sparse-strip renderer used on embedded
-//! targets, and any backend that owns its own scene.
-//!
-//! [`Scene2D`]: waterui_graphics::Scene2D
+//! Cherenkov recording contract, so one implementation renders on the GPU
+//! engine, the CPU engine used on embedded targets, and any backend that
+//! hosts a scene.
 //!
 //! # Architecture
 //!
 //! 1. **Matrix generation**: encoders produce the module matrix on CPU.
 //! 2. **Geometry**: dark modules become one filled path, with horizontally
 //!    adjacent modules collapsed into a single rectangle per bar.
-//! 3. **Scene**: that path is filled through [`Scene2D::fill`], leaving
-//!    resolution, anti-aliasing, and rasterization to the renderer.
+//! 3. **Recording**: the path and its paints are recorded through
+//!    [`cherenkov::Recorder`], bound as live operands so a payload or color
+//!    signal update reaches the retained scene in place — leaving resolution,
+//!    anti-aliasing, and rasterization to the engine.
 //!
-//! [`Scene2D::fill`]: waterui_graphics::Scene2D::fill
-//!
-//! Rasterizing a barcode into a standalone image needs a GPU device, so the
-//! `ImageGenerator` implementation for [`BarcodeSource`] sits behind the
-//! non-default `gpu` feature. Drawing a barcode into a view does not.
+//! Rasterizing a barcode into a standalone image needs a GPU device, so
+//! `BarcodeSource::generate` sits behind the non-default `gpu` feature.
+//! Drawing a barcode into a view does not.
 //!
 //! # Example
 //!
@@ -40,6 +38,8 @@ mod renderer;
 mod view;
 
 pub use mask::BarcodeMask;
+#[doc(hidden)]
+pub use qr::reactive_source;
 pub use qr::{BarcodeError, BarcodeMatrix, BarcodeSource, BarcodeSymbology};
 pub use renderer::BarcodeRenderer;
 pub use view::{Barcode, BarcodeFill, BarcodeSceneFill, code128, qr_code};

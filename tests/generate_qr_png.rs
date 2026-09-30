@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use rxing::BarcodeFormat;
 use waterui_barcode::{BarcodeRenderer, BarcodeSource};
-use waterui_graphics::{GpuRuntime, OffscreenRenderConfig, OffscreenSize, SceneView, wgpu};
+use waterui_graphics::{OffscreenRenderer, OffscreenSize, cherenkov_gpu::Gpu};
 
 mod support;
 
@@ -15,21 +15,17 @@ fn generate_qr_png_offscreen() {
     let out_path = std::env::var("WATERUI_QR_OUT")
         .map_or_else(|_| PathBuf::from("target/generated_qr.png"), PathBuf::from);
 
-    let mut env = waterui_core::Environment::new();
-    let renderer = BarcodeRenderer::new(
+    let env = waterui_core::Environment::new();
+    let mut renderer = BarcodeRenderer::new(
         BarcodeSource::qr(content.clone()).expect("static test payload must encode"),
         &env,
     );
     let size = OffscreenSize::try_from_pixels(768, 768).expect("valid output size");
-    let config = OffscreenRenderConfig::new(size).format(wgpu::TextureFormat::Rgba8Unorm);
-    let runtime = pollster::block_on(GpuRuntime::new())
-        .expect("QR export test requires a working GPU runtime");
-    let output = pollster::block_on(
-        SceneView::new(renderer)
-            .into_gpu_surface()
-            .render_offscreen(&runtime, config, &mut env),
-    )
-    .expect("offscreen QR render should succeed");
+    let gpu =
+        OffscreenRenderer::<Gpu>::new().expect("QR export test requires a working GPU renderer");
+    let output = gpu
+        .render(&mut renderer, size, 1.0)
+        .expect("offscreen QR render should succeed");
     assert_eq!(
         output.rgba8.len(),
         (output.width * output.height * 4) as usize
