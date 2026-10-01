@@ -7,7 +7,7 @@ use waterui_core::layout::Size;
 use waterui_core::reactive::watcher::BoxWatcherGuard;
 use waterui_core::{Computed, Environment, Signal, Str};
 use waterui_graphics::{
-    SceneContent, SceneInvalidator, SceneResources,
+    RecordingResources, SceneContent, SceneInvalidator,
     cherenkov::{Draw as _, Fixed, Recorder},
     color::{Color, WorkingColor},
 };
@@ -89,7 +89,7 @@ impl<C: SceneContent> SceneContent for BarcodeMask<C> {
     fn build_scene(
         &mut self,
         recorder: &mut Recorder,
-        resources: &SceneResources,
+        resources: &mut RecordingResources<'_>,
         width: f32,
         height: f32,
     ) -> bool {

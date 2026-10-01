@@ -7,7 +7,7 @@ use rxing::BarcodeFormat;
 use waterui_barcode::{BarcodeFill, BarcodeMask, BarcodeRenderer, BarcodeSource};
 use waterui_core::{Environment, layout::UnitPoint};
 use waterui_graphics::{
-    OffscreenImage, OffscreenRenderer, OffscreenSize, SceneContent, SceneResources,
+    OffscreenImage, OffscreenRenderer, OffscreenSize, RecordingResources, SceneContent,
     cherenkov::{
         Color as EngineColor, Draw as _, Fixed, Interpolation, LinearGradient, Recorder,
         Srgb as EngineSrgb,
@@ -31,7 +31,7 @@ impl SceneContent for GradientInk {
     fn build_scene(
         &mut self,
         recorder: &mut Recorder,
-        _resources: &SceneResources,
+        _resources: &mut RecordingResources<'_>,
         width: f32,
         height: f32,
     ) -> bool {
