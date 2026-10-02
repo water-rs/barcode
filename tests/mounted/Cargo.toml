@@ -14,8 +14,8 @@ description = "Mounted end-to-end tests for waterui-barcode through a real backe
 # build until the ported backend revisions land.
 [dev-dependencies]
 waterui-barcode = { path = "../.." }
-waterui = "0.5.0"
-waterui-testing = "0.5.0"
+waterui = "0.5.2"
+waterui-testing = "0.5.1"
 # The layout tests mount a scroll view, whose scrollbars need a widget theme the
 # default test theme does not carry.
-hydrolysis-m3 = "0.3.0"
+hydrolysis-m3 = "0.3.1"
