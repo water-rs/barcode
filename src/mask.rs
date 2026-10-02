@@ -106,6 +106,12 @@ impl<C: SceneContent> SceneContent for BarcodeMask<C> {
         wants_another_frame
     }
 
+    /// The mask's own state is semantic — the payload signal and the light
+    /// color; whatever the engine created lives in the ink.
+    fn rebuild_for_engine(&mut self) {
+        self.ink.rebuild_for_engine();
+    }
+
     fn set_invalidator(&mut self, invalidator: Option<SceneInvalidator>) {
         self.ink.set_invalidator(invalidator.clone());
         // Clip shape and light color reach the recorded scene through live

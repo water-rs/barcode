@@ -46,6 +46,8 @@ impl SceneContent for GradientInk {
         );
         false
     }
+
+    fn rebuild_for_engine(&mut self) {}
 }
 
 fn render(mut content: impl SceneContent, pixels: u32) -> OffscreenImage {
