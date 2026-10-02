@@ -129,8 +129,8 @@ waterkit-video-streaming = { git = "https://github.com/water-rs/waterkit", rev =
 
 # The Cherenkov-cutover backend runtime the mounted tests in
 # `tests/mounted` drive, at the cutover revisions.
-hydrolysis-m3 = { git = "https://github.com/water-rs/hydrolysis-m3", rev = "af90237154cd26080e89bf0ef0ab9828f0bb9a67" }
-hydrolysis = { git = "https://github.com/water-rs/hydrolysis", rev = "783208625bf5e1abdcb8c7a5dc241e599cccd4c8" }
+hydrolysis-m3 = { git = "https://github.com/water-rs/hydrolysis-m3", rev = "a3ff145ac5458c8d62c273e401fee68dce3c4521" }
+hydrolysis = { git = "https://github.com/water-rs/hydrolysis", rev = "a833de993561aa1a10682baed4b13fd83d0c687e" }
 
 # `waterui-testing` at `e2c5e356` still declares a `vello = "0.9"` dependency
 # that was never released to the registry; only reachable under `mounted`.
