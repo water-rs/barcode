@@ -2,20 +2,18 @@
 
 use core::fmt;
 
-use kurbo::Affine;
 use nami::signal::IntoComputed;
-use peniko::{Brush, Fill};
 use waterui_core::layout::Size;
 use waterui_core::reactive::watcher::BoxWatcherGuard;
-use waterui_core::{Computed, Environment, Signal as _, Str};
+use waterui_core::{Computed, Environment, Signal, Str};
 use waterui_graphics::{
-    Scene2D, SceneContent, SceneInvalidator,
-    color::{Color, ResolvedColor},
+    RecordingResources, SceneContent, SceneInvalidator,
+    cherenkov::{Draw as _, Fixed, Recorder},
+    color::{Color, WorkingColor},
 };
 
-use crate::geometry::{content_rect, dark_module_path, natural_size};
-use crate::qr::ReactiveBarcodeContent;
-use crate::renderer::{fill_rect, resolve_color, surface_rect, to_peniko};
+use crate::geometry::natural_size;
+use crate::renderer::{module_path, resolve_color, surface_rect};
 use crate::{BarcodeSource, BarcodeSymbology};
 
 /// Draws `C` clipped to a barcode's dark modules, over the light module color.
@@ -24,19 +22,21 @@ use crate::{BarcodeSource, BarcodeSymbology};
 /// inner content draws across the whole surface and only survives where a dark
 /// module is, so a gradient, a photo, or an animation becomes the barcode's
 /// ink without either side knowing about the other.
+///
+/// The clip shape is bound to the payload as a live operand of the recorded
+/// scene: a signal change re-encodes the matrix and updates the clip in place
+/// without re-recording, and only the intrinsic size — which layout must hear
+/// about — goes through the invalidator.
 pub struct BarcodeMask<C: SceneContent> {
-    source: BarcodeSource,
-    reactive_content: Option<ReactiveBarcodeContent>,
-    light_color: Computed<ResolvedColor>,
+    source: Computed<BarcodeSource>,
+    light_color: Computed<WorkingColor>,
     ink: C,
-    light_color_guard: Option<BoxWatcherGuard>,
+    layout_guard: Option<BoxWatcherGuard>,
 }
 
 impl<C: SceneContent> fmt::Debug for BarcodeMask<C> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("BarcodeMask")
-            .field("source", &self.source)
-            .finish_non_exhaustive()
+        f.debug_struct("BarcodeMask").finish_non_exhaustive()
     }
 }
 
@@ -50,11 +50,10 @@ impl<C: SceneContent> BarcodeMask<C> {
         env: &Environment,
     ) -> Self {
         Self {
-            source,
-            reactive_content: None,
+            source: source.into_computed(),
             light_color: resolve_color(light_color, env),
             ink,
-            light_color_guard: None,
+            layout_guard: None,
         }
     }
 
@@ -73,10 +72,9 @@ impl<C: SceneContent> BarcodeMask<C> {
         ink: C,
         env: &Environment,
     ) -> Self {
-        let reactive_content = ReactiveBarcodeContent::new(symbology, content.into_computed());
-        let source = reactive_content.initial_source();
-        let mut mask = Self::new(source, light_color, ink, env);
-        mask.reactive_content = Some(reactive_content);
+        let source = crate::qr::reactive_source(symbology, &content.into_computed());
+        let mut mask = Self::new(source.snapshot(), light_color, ink, env);
+        mask.source = source;
         mask
     }
 }
@@ -85,49 +83,34 @@ impl<C: SceneContent> SceneContent for BarcodeMask<C> {
     /// The barcode's own size, not the ink's: the ink draws across whatever
     /// box the symbol is given.
     fn intrinsic_size(&self) -> Option<Size> {
-        Some(natural_size(&self.source, self.reactive_content.as_ref()))
+        Some(natural_size(&self.source.snapshot()))
     }
 
-    fn build_scene(&mut self, scene: &mut dyn Scene2D, width: f32, height: f32) -> bool {
-        if let Some(source) = self
-            .reactive_content
-            .as_mut()
-            .and_then(ReactiveBarcodeContent::take_reencoded)
-        {
-            self.source = source;
-        }
+    fn build_scene(
+        &mut self,
+        recorder: &mut Recorder,
+        resources: &mut RecordingResources<'_>,
+        width: f32,
+        height: f32,
+    ) -> bool {
         let Some(surface) = surface_rect(width, height) else {
             return false;
         };
 
-        fill_rect(
-            scene,
-            surface,
-            &Brush::Solid(to_peniko(&self.light_color.snapshot())),
-        );
+        recorder.fill(Fixed(surface), self.light_color.clone());
 
-        let area = content_rect(&self.source, surface.width(), surface.height());
-        let modules = dark_module_path(&self.source, area);
-        scene.push_clip_layer(Fill::NonZero, Affine::IDENTITY, &modules);
-        let wants_another_frame = self.ink.build_scene(scene, width, height);
-        scene.pop_layer();
+        let mut wants_another_frame = false;
+        recorder.clip(module_path(&self.source, surface), |recorder| {
+            wants_another_frame = self.ink.build_scene(recorder, resources, width, height);
+        });
         wants_another_frame
     }
 
     fn set_invalidator(&mut self, invalidator: Option<SceneInvalidator>) {
-        self.light_color_guard = None;
         self.ink.set_invalidator(invalidator.clone());
-        let Some(invalidator) = invalidator else {
-            return;
-        };
-
-        self.light_color_guard = Some(self.light_color.watch({
-            let invalidator = SceneInvalidator::clone(&invalidator);
-            move |_| invalidator()
-        }));
-
-        if let Some(reactive_content) = &mut self.reactive_content {
-            reactive_content.install(move || invalidator());
-        }
+        // Clip shape and light color reach the recorded scene through live
+        // operands; only a payload change can move the intrinsic size, which
+        // is what layout has to be told about.
+        self.layout_guard = invalidator.map(|invalidate| self.source.watch(move |_| invalidate()));
     }
 }
