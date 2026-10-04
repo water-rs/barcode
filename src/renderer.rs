@@ -210,6 +210,10 @@ impl SceneContent for BarcodeRenderer {
         false
     }
 
+    /// Signals and resolved colors are all this content holds; nothing it
+    /// owns is bound to the engine generation that recorded it.
+    fn rebuild_for_engine(&mut self) {}
+
     fn set_invalidator(&mut self, invalidator: Option<SceneInvalidator>) {
         // Geometry and paint signal changes reach the recorded scene through
         // their live operands without a re-record; only a payload change can
