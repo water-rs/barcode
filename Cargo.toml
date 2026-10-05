@@ -40,7 +40,7 @@ undocumented_unsafe_blocks = "warn"
 multiple_crate_versions = "allow"
 
 [dependencies]
-nami = "=0.11.1"
+nami = "0.12"
 waterui-core = "0.5.1"
 waterui-graphics = { version = "0.5.1", default-features = false }
 kurbo = "0.13"
