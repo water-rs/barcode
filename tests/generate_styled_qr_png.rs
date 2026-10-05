@@ -8,12 +8,12 @@ use waterui_barcode::{BarcodeFill, BarcodeMask, BarcodeRenderer, BarcodeSource};
 use waterui_core::{Environment, layout::UnitPoint};
 use waterui_graphics::{
     OffscreenImage, OffscreenRenderer, OffscreenSize, RecordingResources, SceneContent,
-    cherenkov::{
+    cherenkov_gpu::Gpu,
+    color::{Color, Srgb},
+    draw::{
         Color as EngineColor, Draw as _, Fixed, Interpolation, LinearGradient, Recorder,
         Srgb as EngineSrgb,
     },
-    cherenkov_gpu::Gpu,
-    color::{Color, Srgb},
 };
 
 mod support;

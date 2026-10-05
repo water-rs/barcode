@@ -1,9 +1,9 @@
 //! Barcode and QR code rendering for `WaterUI`.
 //!
 //! Barcodes are drawn as vector geometry through `waterui-graphics`'
-//! Cherenkov recording contract, so one implementation renders on the GPU
-//! engine, the CPU engine used on embedded targets, and any backend that
-//! hosts a scene.
+//! render-target-neutral recording contract, so one implementation renders
+//! on the GPU engine, the CPU engine used on embedded targets, and any
+//! backend that hosts a scene.
 //!
 //! # Architecture
 //!
@@ -11,9 +11,10 @@
 //! 2. **Geometry**: dark modules become one filled path, with horizontally
 //!    adjacent modules collapsed into a single rectangle per bar.
 //! 3. **Recording**: the path and its paints are recorded through
-//!    [`cherenkov::Recorder`], bound as live operands so a payload or color
-//!    signal update reaches the retained scene in place — leaving resolution,
-//!    anti-aliasing, and rasterization to the engine.
+//!    [`waterui_graphics::draw::Recorder`], bound as live operands so a
+//!    payload or color signal update reaches the retained scene in place —
+//!    leaving resolution, anti-aliasing, and rasterization to the render
+//!    target.
 //!
 //! Rasterizing a barcode into a standalone image needs a GPU device, so
 //! `BarcodeSource::generate` sits behind the non-default `gpu` feature.

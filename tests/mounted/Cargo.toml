@@ -7,11 +7,9 @@ rust-version = "1.95"
 description = "Mounted end-to-end tests for waterui-barcode through a real backend runtime"
 
 # These tests drive a real backend runtime (`waterui-testing` + `hydrolysis` +
-# `hydrolysis-m3`). Their Cherenkov ports are still in flight
-# (`feat/cherenkov-migration` heads pinned in the workspace patch table), so
-# they live in their own package: `cargo test -p waterui-barcode` exercises the
-# crate's own suite while this package's targets are the only ones that do not
-# build until the ported backend revisions land.
+# `hydrolysis-m3`), whose crate graph is far wider than the component's own.
+# They live in their own package so `cargo test -p waterui-barcode` exercises
+# the crate's own suite without mounting a whole framework.
 [dev-dependencies]
 waterui-barcode = { path = "../.." }
 waterui = "0.5.2"

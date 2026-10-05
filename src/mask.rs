@@ -8,8 +8,8 @@ use waterui_core::reactive::watcher::BoxWatcherGuard;
 use waterui_core::{Computed, Environment, Signal, Str};
 use waterui_graphics::{
     RecordingResources, SceneContent, SceneInvalidator,
-    cherenkov::{Draw as _, Fixed, Recorder},
     color::{Color, WorkingColor},
+    draw::{Draw as _, Fixed, Recorder},
 };
 
 use crate::geometry::natural_size;
