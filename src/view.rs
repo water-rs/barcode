@@ -96,8 +96,8 @@ fn apply_barcode_semantics(
 /// A view that renders a barcode.
 ///
 /// `Barcode` draws QR and linear barcodes as vector geometry through the
-/// Cherenkov recording contract, so it renders identically on the GPU engine
-/// and the CPU engine wherever a backend hosts a scene.
+/// render-target-neutral recording contract, so it renders identically on
+/// the GPU engine and the CPU engine wherever a backend hosts a scene.
 ///
 /// # Example
 ///

@@ -9,8 +9,8 @@ use waterui_core::reactive::watcher::BoxWatcherGuard;
 use waterui_core::{Computed, Environment, Signal, Str, flatten_signal};
 use waterui_graphics::{
     RecordingResources, SceneContent, SceneInvalidator,
-    cherenkov::{Draw as _, Fixed, Interpolation, LinearGradient, Paint, Recorder},
     color::{Color, Srgb, WorkingColor},
+    draw::{Draw as _, Fixed, Interpolation, LinearGradient, Paint, Recorder},
 };
 
 use crate::geometry::{content_rect, dark_module_path, natural_size};

@@ -2,10 +2,10 @@
 
 QR code and barcode generation component for WaterUI.
 
-Barcodes are drawn as vector geometry through `waterui-graphics`' engine-neutral
-`Scene2D` contract, so the same component renders on the GPU compute renderer,
-the CPU sparse-strip renderer used on embedded targets, and any backend that
-owns its own scene.
+Barcodes are drawn as vector geometry through `waterui-graphics`'
+render-target-neutral recording contract, so the same component renders on
+the GPU compute renderer, the CPU sparse-strip renderer used on embedded
+targets, and any backend that owns its own scene.
 
 Rasterizing a barcode into a standalone image needs a GPU device, so the
 `ImageGenerator` implementation for `BarcodeSource` sits behind the non-default
