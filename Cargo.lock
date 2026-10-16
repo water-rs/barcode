@@ -6622,7 +6622,7 @@ source = "git+https://github.com/water-rs/map-gpu?branch=feat%2Fnami-0.13#c43bbd
 [[patch.unused]]
 name = "waterui-math"
 version = "0.2.0"
-source = "git+https://github.com/water-rs/math?branch=feat%2Fnami-0.13#225d428231d67d4d593dfa0ad70fb5accf9a6a3a"
+source = "git+https://github.com/water-rs/math?branch=feat%2Fnami-0.13#030506e9963a255b2b677f10db0855ae15acde81"
 
 [[patch.unused]]
 name = "waterui-particle"
