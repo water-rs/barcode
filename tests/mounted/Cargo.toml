@@ -3,7 +3,7 @@ name = "waterui-barcode-mounted-tests"
 version = "0.0.0"
 edition = "2024"
 publish = false
-rust-version = "1.95"
+rust-version = "1.99"
 description = "Mounted end-to-end tests for waterui-barcode through a real backend runtime"
 
 # These tests drive a real backend runtime (`waterui-testing` + `hydrolysis` +

@@ -41,9 +41,7 @@ fn decode(image: &OffscreenImage, format: BarcodeFormat) -> String {
 }
 
 fn out_dir() -> PathBuf {
-    let dir = PathBuf::from(
-        "/private/tmp/claude-501/-Users-lexoliu-Coding-waterui/161051f2-1da9-410b-8d87-b5d503d54de0/scratchpad/barcode44",
-    );
+    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("generate");
     std::fs::create_dir_all(&dir).expect("output directory must be creatable");
     dir
 }
