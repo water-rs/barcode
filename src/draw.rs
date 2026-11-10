@@ -15,7 +15,7 @@ use waterui_graphics::{
 };
 
 use crate::BarcodeSource;
-use crate::geometry::{content_rect, dark_module_path, natural_size};
+use crate::geometry::{content_rect, module_path, natural_size};
 use crate::view::BarcodeFill;
 
 /// What fills a barcode's dark modules when it is not a plain color or
@@ -142,11 +142,23 @@ pub fn barcode_canvas(
         cx.fill(size.map(Rect::from_size), light);
         let path = source
             .zip(&size)
-            .map(|(source, size)| dark_module_path(&source, content_rect(&source, size)))
+            .map(|(source, size)| module_path(&source, size))
             .computed();
         modules(cx, &size, path);
     })
     .intrinsic_size(natural)
+}
+
+/// The barcode as a standalone [`Drawing`] of its natural size: black modules
+/// on a white background, laid out by the same geometry as
+/// [`barcode_canvas`].
+#[cfg(feature = "gpu")]
+pub fn barcode_drawing(source: &BarcodeSource) -> Drawing {
+    let size = natural_size(source);
+    Drawing::record(size, |cx| {
+        cx.fill(Rect::from_size(size), WorkingColor::WHITE);
+        cx.fill(module_path(source, size), WorkingColor::BLACK);
+    })
 }
 
 /// A canvas painting the dark modules with `fill`.

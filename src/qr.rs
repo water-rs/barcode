@@ -303,6 +303,35 @@ pub fn reactive_source(
         .into_computed()
 }
 
+/// Rasterizing a barcode into a standalone image.
+///
+/// This is the one part of the crate that needs a GPU device: everything else
+/// draws on a canvas, which the renderer around it rasterizes.
+#[cfg(feature = "gpu")]
+impl BarcodeSource {
+    /// Renders this barcode at its [`Self::output_size`] through `renderer`:
+    /// black modules on a white background, recorded as a
+    /// [`Drawing`](waterui_graphics::canvas::Drawing) by the geometry the
+    /// barcode's canvas draws.
+    ///
+    /// # Panics
+    ///
+    /// Panics when the output dimensions are degenerate or the offscreen
+    /// render fails.
+    #[must_use]
+    pub fn generate(
+        &self,
+        renderer: &waterui_graphics::OffscreenRenderer<waterui_graphics::cherenkov_gpu::Gpu>,
+    ) -> waterui_graphics::OffscreenImage {
+        let (width, height) = self.output_size();
+        let size = waterui_graphics::OffscreenSize::try_from_pixels(width, height)
+            .expect("BarcodeSource::generate: dimensions must be non-zero");
+        renderer
+            .render_drawing(&crate::draw::barcode_drawing(self), size)
+            .expect("BarcodeSource::generate: GPU offscreen render should succeed")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

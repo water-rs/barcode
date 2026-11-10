@@ -45,6 +45,13 @@ pub fn content_rect(source: &BarcodeSource, surface: Size) -> Rect {
     }
 }
 
+/// One path covering every dark module of `source`, laid out in a box of
+/// `size`: the placement ([`content_rect`]) and the bars ([`dark_module_path`])
+/// every drawing of a barcode shares.
+pub fn module_path(source: &BarcodeSource, size: Size) -> Path {
+    dark_module_path(source, content_rect(source, size))
+}
+
 /// One path covering every dark module of `source`, laid out inside `area`.
 ///
 /// Horizontally adjacent dark modules become a single rectangle: the run is

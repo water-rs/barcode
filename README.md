@@ -7,6 +7,10 @@ so whichever renderer draws the screen around a barcode draws it. Dark modules
 are filled by a color, a gradient, or any canvas content through
 `Barcode::fill_scene`.
 
+Rasterizing a barcode into a standalone image needs a GPU device, so
+`BarcodeSource::generate` sits behind the non-default `gpu` feature. Drawing a
+barcode into a view does not.
+
 ## Example
 
 `examples/barcode` is a WaterUI playground that renders the symbologies this

@@ -14,6 +14,11 @@
 //!    leaving resolution, anti-aliasing and rasterization to the renderer. The
 //!    canvas' intrinsic size follows the payload.
 //!
+//! Rasterizing a barcode into a standalone image needs a GPU device, so
+//! `BarcodeSource::generate` sits behind the non-default `gpu` feature. It
+//! records the same geometry as a [`Drawing`](waterui_graphics::canvas::Drawing)
+//! and renders it offscreen. Drawing a barcode on a canvas does not need it.
+//!
 //! A barcode's dark modules are filled by a color, a gradient, or any
 //! [`Ink`] — a [`Drawing`](waterui_graphics::canvas::Drawing) or a canvas
 //! closure — through [`Barcode::fill_scene`].
