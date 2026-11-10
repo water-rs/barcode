@@ -1,6 +1,6 @@
 //! A barcode has a size of its own: its output size.
 //!
-//! These are the layout claims behind `SceneContent::intrinsic_size` for a
+//! These are the layout claims behind `Canvas::intrinsic_size` for a
 //! barcode, checked through the semantic runtime: a vertical scroll view names
 //! the width and leaves the height open, which is exactly the case that used
 //! to collapse to zero.
