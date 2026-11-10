@@ -35,7 +35,7 @@ pub enum BarcodeSymbology {
 /// A barcode data source.
 ///
 /// Encodes module data once during construction; placement and rasterization
-/// happen when the barcode is drawn into a scene.
+/// happen when the barcode is drawn on a canvas.
 #[derive(Clone)]
 pub struct BarcodeSource {
     symbology: BarcodeSymbology,
@@ -136,9 +136,8 @@ impl BarcodeSource {
 
     /// Sets the output extent, in units.
     ///
-    /// This is the size the barcode *is* when nothing else decides: the pixel
-    /// size the image generator rasterizes at, and the natural size the scene
-    /// contents report to layout through [`Self::output_size`].
+    /// This is the size the barcode *is* when nothing else decides: the
+    /// canvas' intrinsic size, which layout reads through [`Self::output_size`].
     pub const fn set_size(&mut self, size: u32) {
         self.size = size;
     }
@@ -229,9 +228,8 @@ impl BarcodeSource {
     /// A QR code is that extent on both sides. A Code128 symbol is its bar
     /// count wide, floored at the extent, and the extent tall — the symbology
     /// fixes no bar height, so the configured extent is the one there is.
-    /// The image generator rasterizes at exactly this, in pixels, and the scene
-    /// contents answer it from `SceneContent::intrinsic_size`, in points, so a
-    /// barcode measures the same on both paths.
+    /// The barcode's canvas reports exactly this, in points, as its intrinsic
+    /// size.
     #[must_use]
     pub fn output_size(&self) -> (u32, u32) {
         let quiet_zone = self.quiet_zone();
@@ -287,8 +285,8 @@ nami::impl_constant!(BarcodeSource);
 ///
 /// The signal's current value is encoded eagerly and every later value is
 /// re-encoded through the signal graph, so a `Binding<Str>` update yields a
-/// new matrix — a live operand of any scene recording it — for the next
-/// frame, without rebuilding the view or re-recording the scene.
+/// new matrix — a live operand of any canvas drawing it — for the next
+/// frame, without rebuilding the view or re-running the canvas' closure.
 ///
 /// # Panics
 ///
@@ -305,13 +303,16 @@ pub fn reactive_source(
         .into_computed()
 }
 
-/// Rasterizes a barcode scene into a standalone image.
+/// Rasterizing a barcode into a standalone image.
 ///
 /// This is the one part of the crate that needs a GPU device: everything else
-/// draws through the engine's recording contract.
+/// draws on a canvas, which the renderer around it rasterizes.
 #[cfg(feature = "gpu")]
 impl BarcodeSource {
-    /// Renders this barcode at its [`Self::output_size`] through `renderer`.
+    /// Renders this barcode at its [`Self::output_size`] through `renderer`:
+    /// black modules on a white background, recorded as a
+    /// [`Drawing`](waterui_graphics::canvas::Drawing) by the geometry the
+    /// barcode's canvas draws.
     ///
     /// # Panics
     ///
@@ -325,10 +326,8 @@ impl BarcodeSource {
         let (width, height) = self.output_size();
         let size = waterui_graphics::OffscreenSize::try_from_pixels(width, height)
             .expect("BarcodeSource::generate: dimensions must be non-zero");
-        let env = waterui_core::Environment::new();
-        let mut content = crate::BarcodeRenderer::new(self.clone(), &env);
         renderer
-            .render(&mut content, size, 1.0)
+            .render_drawing(&crate::draw::barcode_drawing(self), size)
             .expect("BarcodeSource::generate: GPU offscreen render should succeed")
     }
 }
@@ -387,43 +386,6 @@ mod tests {
         assert_eq!(
             matrix.packed_data.len(),
             (matrix.width * matrix.height).div_ceil(32) as usize
-        );
-    }
-
-    #[cfg(feature = "gpu")]
-    #[test]
-    fn qr_generator_produces_expected_size_and_pixels() {
-        let renderer =
-            waterui_graphics::OffscreenRenderer::<waterui_graphics::cherenkov_gpu::Gpu>::new()
-                .expect("barcode tests require a working GPU renderer");
-        let mut source =
-            BarcodeSource::qr("https://waterui.dev").expect("static test payload must encode");
-        source.set_size(192);
-
-        let image = source.generate(&renderer);
-
-        assert_eq!(image.width, 192);
-        assert_eq!(image.height, 192);
-        assert_eq!(image.rgba8.len(), 192 * 192 * 4);
-    }
-
-    #[cfg(feature = "gpu")]
-    #[test]
-    fn code128_generator_produces_expected_size_and_pixels() {
-        let renderer =
-            waterui_graphics::OffscreenRenderer::<waterui_graphics::cherenkov_gpu::Gpu>::new()
-                .expect("barcode tests require a working GPU renderer");
-        let mut source =
-            BarcodeSource::code128("HELLO-WATERUI").expect("static test payload must encode");
-        source.set_size(256);
-
-        let image = source.generate(&renderer);
-
-        assert!(image.width >= 256);
-        assert_eq!(image.width, image.height);
-        assert_eq!(
-            image.rgba8.len(),
-            image.width as usize * image.height as usize * 4
         );
     }
 }
