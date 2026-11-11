@@ -103,12 +103,11 @@ waterui-watcher-set = { git = "https://github.com/water-rs/waterui", branch = "d
 waterui-webview = { git = "https://github.com/water-rs/waterui", branch = "dev" }
 
 # Extracted component crates. The ones moving to nami 0.13 alongside this
-# crate (canvas, chart, map-gpu, math, video-gpu) ride their own
+# crate (chart, map-gpu, math, video-gpu) ride their own
 # `feat/nami-0.13` branches, since the revisions the framework's table names
 # are still on nami 0.12; image and particle ride their `dev`, and svg the
 # revision the framework's own patch table pins. `waterui-barcode` itself is the local
 # crate, patched at the top of the table.
-waterui-canvas = { git = "https://github.com/water-rs/canvas", branch = "dev" }
 waterui-chart = { git = "https://github.com/water-rs/chart", branch = "dev" }
 waterui-image = { git = "https://github.com/water-rs/image", branch = "dev" }
 waterui-map-gpu = { git = "https://github.com/water-rs/map-gpu", branch = "dev" }
