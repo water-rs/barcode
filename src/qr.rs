@@ -321,7 +321,7 @@ impl BarcodeSource {
     #[must_use]
     pub fn generate(
         &self,
-        renderer: &waterui_graphics::OffscreenRenderer<waterui_graphics::cherenkov_gpu::Gpu>,
+        renderer: &waterui_graphics::OffscreenRenderer<waterui_graphics::gpu::Gpu>,
     ) -> waterui_graphics::OffscreenImage {
         let (width, height) = self.output_size();
         let size = waterui_graphics::OffscreenSize::try_from_pixels(width, height)

@@ -8,7 +8,7 @@ use rxing::{
     common::HybridBinarizer,
 };
 use waterui_barcode::BarcodeSource;
-use waterui_graphics::{OffscreenImage, OffscreenRenderer, cherenkov_gpu::Gpu};
+use waterui_graphics::{OffscreenImage, OffscreenRenderer, gpu::Gpu};
 
 fn decode(image: &OffscreenImage, format: BarcodeFormat) -> String {
     let luminance = image
