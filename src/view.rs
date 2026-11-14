@@ -1,4 +1,5 @@
-use crate::{BarcodeMask, BarcodeRenderer, BarcodeSymbology};
+use crate::draw::{Ink, ResolvedFill, filled_canvas, inked_canvas, resolve_color};
+use crate::{BarcodeSymbology, reactive_source};
 use core::fmt;
 use nami::{Computed, SignalExt as _, signal::IntoComputed};
 use waterui_core::{
@@ -7,7 +8,7 @@ use waterui_core::{
     layout::UnitPoint,
     metadata::IgnorableMetadata,
 };
-use waterui_graphics::{SceneContent, SceneView, color::Color};
+use waterui_graphics::color::Color;
 
 /// Fill style for dark barcode modules.
 ///
@@ -95,10 +96,8 @@ fn apply_barcode_semantics(
 
 /// A view that renders a barcode.
 ///
-/// `Barcode` draws QR and linear barcodes as vector geometry through the
-/// engine-neutral scene contract, so it renders identically on the GPU compute
-/// renderer, the CPU sparse-strip renderer, and native backends that own their
-/// own scene.
+/// `Barcode` draws QR and linear barcodes as vector geometry on a `Canvas`,
+/// so whichever renderer draws the screen around it draws the symbol.
 ///
 /// # Example
 ///
@@ -116,15 +115,15 @@ pub struct Barcode {
     light_color: Computed<Color>,
 }
 
-/// Barcode view whose dark modules are filled by arbitrary scene content.
-pub struct BarcodeSceneFill<C: SceneContent> {
+/// Barcode view whose dark modules are filled by an [`Ink`].
+pub struct BarcodeSceneFill<I: Ink> {
     symbology: BarcodeSymbology,
     content: Computed<Str>,
-    ink: C,
+    ink: I,
     light_color: Computed<Color>,
 }
 
-impl<C: SceneContent> fmt::Debug for BarcodeSceneFill<C> {
+impl<I: Ink> fmt::Debug for BarcodeSceneFill<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BarcodeSceneFill").finish_non_exhaustive()
     }
@@ -203,12 +202,13 @@ impl Barcode {
         self
     }
 
-    /// Fills dark modules using arbitrary scene content.
+    /// Fills dark modules with arbitrary canvas content.
     ///
-    /// Any type implementing `SceneContent` can be passed directly; it draws
-    /// across the whole surface and is clipped to the dark modules.
+    /// `ink` is a [`Drawing`](waterui_graphics::canvas::Drawing) or a closure
+    /// drawing on the barcode's canvas; it draws across the whole box and is
+    /// clipped to the dark modules.
     #[must_use]
-    pub fn fill_scene<C: SceneContent>(self, ink: C) -> BarcodeSceneFill<C> {
+    pub fn fill_scene<I: Ink>(self, ink: I) -> BarcodeSceneFill<I> {
         BarcodeSceneFill {
             symbology: self.symbology,
             content: self.content,
@@ -218,7 +218,7 @@ impl Barcode {
     }
 }
 
-impl<C: SceneContent> BarcodeSceneFill<C> {
+impl<I: Ink> BarcodeSceneFill<I> {
     /// Sets light module/background color for the masked barcode output.
     #[must_use]
     pub fn light_color(mut self, color: impl IntoComputed<Color>) -> Self {
@@ -235,23 +235,21 @@ impl View for Barcode {
             fill,
             light_color,
         } = self;
-        let renderer = BarcodeRenderer::reactive(symbology, content.clone(), env)
-            .with_fill(fill)
-            .with_light_color(light_color);
-        apply_barcode_semantics(env, symbology, &content, SceneView::new(renderer))
+        let source = reactive_source(symbology, &content);
+        let canvas = filled_canvas(
+            source,
+            resolve_color(light_color, env),
+            ResolvedFill::new(fill, env),
+        );
+        apply_barcode_semantics(env, symbology, &content, canvas)
     }
 }
 
-impl<C: SceneContent> View for BarcodeSceneFill<C> {
+impl<I: Ink> View for BarcodeSceneFill<I> {
     fn body(self, env: &Environment) -> impl View {
-        let mask = BarcodeMask::reactive(
-            self.symbology,
-            self.content.clone(),
-            self.light_color,
-            self.ink,
-            env,
-        );
-        apply_barcode_semantics(env, self.symbology, &self.content, SceneView::new(mask))
+        let source = reactive_source(self.symbology, &self.content);
+        let canvas = inked_canvas(source, resolve_color(self.light_color, env), self.ink);
+        apply_barcode_semantics(env, self.symbology, &self.content, canvas)
     }
 }
 
