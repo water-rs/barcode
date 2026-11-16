@@ -683,7 +683,7 @@ dependencies = [
  "js-sys",
  "kurbo",
  "libc",
- "naga 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "naga",
  "ndk",
  "ndk-sys",
  "objc2",
@@ -712,7 +712,7 @@ dependencies = [
  "wasm-bindgen",
  "waterui-contract",
  "web-sys",
- "wgpu 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wgpu",
 ]
 
 [[package]]
@@ -737,7 +737,7 @@ name = "cherenkov-shader"
 version = "0.0.0"
 source = "git+https://github.com/water-rs/waterui?branch=refactor%2Fstrict-metadata#abd374b0c021e2b84dde0f00f758d08d8269a183"
 dependencies = [
- "naga 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "naga",
  "thiserror 2.0.21",
 ]
 
@@ -1366,7 +1366,7 @@ dependencies = [
  "tracing",
  "waterui-contract",
  "web-time",
- "wgpu 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wgpu",
 ]
 
 [[package]]
@@ -1791,7 +1791,7 @@ dependencies = [
  "waterui-url",
  "waterui-watcher-set",
  "waterui-webview",
- "wgpu 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wgpu",
 ]
 
 [[package]]
@@ -2745,32 +2745,6 @@ checksum = "743fb55ba31b18fb1ecef6bdc9aa2743314978ac084044301a7eee33fb99a20d"
 [[package]]
 name = "naga"
 version = "30.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd0dd362bf26c0ffdd143df6da66a25d287e196eff482f117771010b207ad163"
-dependencies = [
- "arrayvec",
- "bit-set 0.10.0",
- "bitflags 2.13.2",
- "cfg-if",
- "cfg_aliases",
- "codespan-reporting",
- "half",
- "hashbrown 0.17.1",
- "indexmap",
- "libm",
- "log",
- "naga-types 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "num-traits",
- "once_cell",
- "rustc-hash 1.1.0",
- "spirv",
- "thiserror 2.0.21",
- "unicode-ident",
-]
-
-[[package]]
-name = "naga"
-version = "30.0.2"
 source = "git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30#68544c99579524dd46cc73eac03b49f8f680b768"
 dependencies = [
  "arrayvec",
@@ -2784,25 +2758,13 @@ dependencies = [
  "indexmap",
  "libm",
  "log",
- "naga-types 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
+ "naga-types",
  "num-traits",
  "once_cell",
  "rustc-hash 1.1.0",
  "spirv",
  "thiserror 2.0.21",
  "unicode-ident",
-]
-
-[[package]]
-name = "naga-types"
-version = "30.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14474170feb673cfb18b3565111a9869797cc1d290fb9ec969c53f5e1e231c6d"
-dependencies = [
- "hashbrown 0.17.1",
- "indexmap",
- "rustc-hash 1.1.0",
- "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -4219,7 +4181,7 @@ source = "git+https://github.com/water-rs/shaderloom?branch=main#0fe16ec3fb7329e
 dependencies = [
  "serde",
  "toml",
- "wgpu 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
+ "wgpu",
 ]
 
 [[package]]
@@ -5458,7 +5420,7 @@ dependencies = [
  "waterui-color",
  "waterui-core",
  "waterui-text",
- "wgpu 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wgpu",
  "wgpu-external-frame",
 ]
 
@@ -5707,7 +5669,7 @@ dependencies = [
  "waterui-assets-planner",
  "waterui-core",
  "waterui-preview-protocol",
- "wgpu 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wgpu",
 ]
 
 [[package]]
@@ -5870,36 +5832,6 @@ checksum = "a28ac98ddc8b9274cb41bb4d9d4d5c425b6020c50c46f25559911905610b4a88"
 [[package]]
 name = "wgpu"
 version = "30.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "146fc3d654250e6207921a66c87534c621bc886c70df83dcf466c1d66813810e"
-dependencies = [
- "arrayvec",
- "bitflags 2.13.2",
- "bytemuck",
- "cfg-if",
- "cfg_aliases",
- "document-features",
- "hashbrown 0.17.1",
- "js-sys",
- "log",
- "naga 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "parking_lot",
- "portable-atomic",
- "profiling",
- "raw-window-handle",
- "smallvec",
- "static_assertions",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "wgpu-core 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "wgpu-hal 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "wgpu-types 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "wgpu"
-version = "30.0.2"
 source = "git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30#68544c99579524dd46cc73eac03b49f8f680b768"
 dependencies = [
  "arrayvec",
@@ -5911,7 +5843,7 @@ dependencies = [
  "hashbrown 0.17.1",
  "js-sys",
  "log",
- "naga 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
+ "naga",
  "parking_lot",
  "portable-atomic",
  "profiling",
@@ -5921,42 +5853,9 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "wgpu-core 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
- "wgpu-hal 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
- "wgpu-types 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
-]
-
-[[package]]
-name = "wgpu-core"
-version = "30.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad661da2ee99f208c30090b585284b2ab5b8bf2358ddf2d2215592808ec62f1a"
-dependencies = [
- "arrayvec",
- "bit-set 0.10.0",
- "bit-vec 0.9.1",
- "bitflags 2.13.2",
- "bytemuck",
- "cfg_aliases",
- "document-features",
- "hashbrown 0.17.1",
- "indexmap",
- "log",
- "naga 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "naga-types 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "once_cell",
- "parking_lot",
- "portable-atomic",
- "profiling",
- "raw-window-handle",
- "rustc-hash 1.1.0",
- "smallvec",
- "thiserror 2.0.21",
- "wgpu-core-deps-apple 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "wgpu-core-deps-windows-linux-android 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "wgpu-hal 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "wgpu-naga-bridge 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "wgpu-types 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wgpu-core",
+ "wgpu-hal",
+ "wgpu-types",
 ]
 
 [[package]]
@@ -5974,8 +5873,8 @@ dependencies = [
  "hashbrown 0.17.1",
  "indexmap",
  "log",
- "naga 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
- "naga-types 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
+ "naga",
+ "naga-types",
  "once_cell",
  "parking_lot",
  "portable-atomic",
@@ -5984,20 +5883,11 @@ dependencies = [
  "rustc-hash 1.1.0",
  "smallvec",
  "thiserror 2.0.21",
- "wgpu-core-deps-apple 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
- "wgpu-core-deps-windows-linux-android 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
- "wgpu-hal 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
- "wgpu-naga-bridge 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
- "wgpu-types 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
-]
-
-[[package]]
-name = "wgpu-core-deps-apple"
-version = "30.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d3f2f24aee039ffe9ef527300daf6b7428c58edeefdaa1700f4fa0fd754df16"
-dependencies = [
- "wgpu-hal 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wgpu-core-deps-apple",
+ "wgpu-core-deps-windows-linux-android",
+ "wgpu-hal",
+ "wgpu-naga-bridge",
+ "wgpu-types",
 ]
 
 [[package]]
@@ -6005,16 +5895,7 @@ name = "wgpu-core-deps-apple"
 version = "30.0.2"
 source = "git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30#68544c99579524dd46cc73eac03b49f8f680b768"
 dependencies = [
- "wgpu-hal 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
-]
-
-[[package]]
-name = "wgpu-core-deps-windows-linux-android"
-version = "30.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1331b08fa2362c5d454eccc4448e6e4f01eccfea569a00e310adbfc4415f2bdc"
-dependencies = [
- "wgpu-hal 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wgpu-hal",
 ]
 
 [[package]]
@@ -6022,7 +5903,7 @@ name = "wgpu-core-deps-windows-linux-android"
 version = "30.0.2"
 source = "git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30#68544c99579524dd46cc73eac03b49f8f680b768"
 dependencies = [
- "wgpu-hal 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
+ "wgpu-hal",
 ]
 
 [[package]]
@@ -6039,55 +5920,8 @@ dependencies = [
  "objc2-metal",
  "sync_wrapper",
  "thiserror 2.0.21",
- "wgpu 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wgpu",
  "windows 0.62.2",
-]
-
-[[package]]
-name = "wgpu-hal"
-version = "30.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a57452fe453658e141aafdb09de1028afa498805fab518238ddf372a518813ff"
-dependencies = [
- "android_system_properties",
- "arrayvec",
- "ash",
- "bit-set 0.10.0",
- "bitflags 2.13.2",
- "block2",
- "bytemuck",
- "cfg-if",
- "cfg_aliases",
- "gpu-allocator",
- "hashbrown 0.17.1",
- "libc",
- "libloading",
- "log",
- "naga 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "naga-types 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "objc2",
- "objc2-core-foundation",
- "objc2-core-graphics",
- "objc2-foundation",
- "objc2-metal",
- "objc2-quartz-core",
- "once_cell",
- "ordered-float",
- "parking_lot",
- "portable-atomic",
- "portable-atomic-util",
- "profiling",
- "range-alloc",
- "raw-window-handle",
- "raw-window-metal",
- "renderdoc-sys",
- "smallvec",
- "static_assertions",
- "thiserror 2.0.21",
- "wgpu-naga-bridge 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "wgpu-types 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "windows 0.62.2",
- "windows-core 0.62.2",
 ]
 
 [[package]]
@@ -6109,8 +5943,8 @@ dependencies = [
  "libc",
  "libloading",
  "log",
- "naga 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
- "naga-types 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
+ "naga",
+ "naga-types",
  "objc2",
  "objc2-core-foundation",
  "objc2-core-graphics",
@@ -6130,8 +5964,8 @@ dependencies = [
  "smallvec",
  "static_assertions",
  "thiserror 2.0.21",
- "wgpu-naga-bridge 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
- "wgpu-types 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
+ "wgpu-naga-bridge",
+ "wgpu-types",
  "windows 0.62.2",
  "windows-core 0.62.2",
 ]
@@ -6139,36 +5973,10 @@ dependencies = [
 [[package]]
 name = "wgpu-naga-bridge"
 version = "30.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44a62ead68aad7cd40ac9e2cd2b8ec64f32dfbad2765f429b9fb74b8b735869f"
-dependencies = [
- "naga 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "wgpu-types 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "wgpu-naga-bridge"
-version = "30.0.2"
 source = "git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30#68544c99579524dd46cc73eac03b49f8f680b768"
 dependencies = [
- "naga 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
- "wgpu-types 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
-]
-
-[[package]]
-name = "wgpu-types"
-version = "30.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9f6ee0bd50f5ab79fb8c25e3f33afb27126f034af4ba5909c7a0967058659e6"
-dependencies = [
- "bitflags 2.13.2",
- "bytemuck",
- "js-sys",
- "log",
- "naga-types 30.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "raw-window-handle",
- "static_assertions",
- "web-sys",
+ "naga",
+ "wgpu-types",
 ]
 
 [[package]]
@@ -6180,7 +5988,7 @@ dependencies = [
  "bytemuck",
  "js-sys",
  "log",
- "naga-types 30.0.2 (git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30)",
+ "naga-types",
  "raw-window-handle",
  "static_assertions",
  "web-sys",
@@ -6894,16 +6702,6 @@ version = "0.1.6"
 source = "git+https://github.com/Dicklesworthstone/rust-block?rev=b39ae859d1ee8e8cb5eef6a516471f1578d26b96#b39ae859d1ee8e8cb5eef6a516471f1578d26b96"
 
 [[patch.unused]]
-name = "naga"
-version = "30.0.1"
-source = "git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30#9e0ab702c11f5db7b62670eaf9aeaf8a2f8ff7b5"
-
-[[patch.unused]]
-name = "naga-types"
-version = "30.0.1"
-source = "git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30#9e0ab702c11f5db7b62670eaf9aeaf8a2f8ff7b5"
-
-[[patch.unused]]
 name = "waterkit-audio"
 version = "0.1.4"
 source = "git+https://github.com/water-rs/waterkit?branch=main#c94c528423e7e4b975523576b3bdbd86ac35987d"
@@ -7019,42 +6817,7 @@ version = "0.4.0"
 source = "git+https://github.com/water-rs/video-gpu?branch=main#d33791afe1201e598e584c9db1a4142d15f04585"
 
 [[patch.unused]]
-name = "wgpu"
-version = "30.0.1"
-source = "git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30#9e0ab702c11f5db7b62670eaf9aeaf8a2f8ff7b5"
-
-[[patch.unused]]
-name = "wgpu-core"
-version = "30.0.1"
-source = "git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30#9e0ab702c11f5db7b62670eaf9aeaf8a2f8ff7b5"
-
-[[patch.unused]]
-name = "wgpu-core-deps-apple"
-version = "30.0.1"
-source = "git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30#9e0ab702c11f5db7b62670eaf9aeaf8a2f8ff7b5"
-
-[[patch.unused]]
 name = "wgpu-core-deps-emscripten"
-version = "30.0.1"
-source = "git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30#9e0ab702c11f5db7b62670eaf9aeaf8a2f8ff7b5"
-
-[[patch.unused]]
-name = "wgpu-core-deps-windows-linux-android"
-version = "30.0.1"
-source = "git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30#9e0ab702c11f5db7b62670eaf9aeaf8a2f8ff7b5"
-
-[[patch.unused]]
-name = "wgpu-hal"
-version = "30.0.1"
-source = "git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30#9e0ab702c11f5db7b62670eaf9aeaf8a2f8ff7b5"
-
-[[patch.unused]]
-name = "wgpu-naga-bridge"
-version = "30.0.1"
-source = "git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30#9e0ab702c11f5db7b62670eaf9aeaf8a2f8ff7b5"
-
-[[patch.unused]]
-name = "wgpu-types"
 version = "30.0.1"
 source = "git+https://github.com/water-rs/wgpu?branch=fix%2Fmetal-shared-memory-v30#9e0ab702c11f5db7b62670eaf9aeaf8a2f8ff7b5"
 
