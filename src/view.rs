@@ -6,7 +6,7 @@ use waterui_core::{
     AnyView, Environment, Str, View,
     accessibility::{AccessibilityLabel, AccessibilityRole},
     layout::UnitPoint,
-    metadata::IgnorableMetadata,
+    metadata::Metadata,
 };
 use waterui_graphics::color::Color;
 
@@ -83,13 +83,10 @@ fn apply_barcode_semantics(
 ) -> AnyView {
     let mut view = AnyView::new(view);
     if env.get::<AccessibilityRole>().is_none() {
-        view = AnyView::new(IgnorableMetadata::new(view, AccessibilityRole::Image));
+        view = AnyView::new(Metadata::new(view, AccessibilityRole::Image));
     }
     if env.get::<AccessibilityLabel>().is_none() {
-        view = AnyView::new(IgnorableMetadata::new(
-            view,
-            barcode_label(symbology, content),
-        ));
+        view = AnyView::new(Metadata::new(view, barcode_label(symbology, content)));
     }
     view
 }
