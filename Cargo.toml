@@ -73,34 +73,34 @@ suiteki = { git = "https://github.com/water-rs/suiteki", branch = "main" }
 # Every `waterui-*` crate in the graph must resolve to this one commit — a
 # registry `waterui-core` beside the facade's own path dependencies gives two
 # `View` traits in one graph.
-waterui = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-assets = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-assets-core = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-assets-macros = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-assets-planner = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-backend-core = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-controls = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-core = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-dylib = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-form = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-graphics = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-icon = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-inspector-protocol = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-internal = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-layout = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-locale = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-macros = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-map = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-media = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-navigation = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-preview-protocol = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-shape = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-testing = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-text = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-url = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-video = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-watcher-set = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
-waterui-webview = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
+waterui = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-assets = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-assets-core = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-assets-macros = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-assets-planner = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-backend-core = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-controls = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-core = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-dylib = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-form = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-graphics = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-icon = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-inspector-protocol = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-internal = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-layout = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-locale = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-macros = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-map = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-media = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-navigation = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-preview-protocol = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-shape = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-testing = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-text = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-url = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-video = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-watcher-set = { git = "https://github.com/water-rs/waterui", branch = "main" }
+waterui-webview = { git = "https://github.com/water-rs/waterui", branch = "main" }
 
 # Extracted component crates. The ones moving to nami 0.13 alongside this
 # crate (chart, map-gpu, math, video-gpu) ride their own
@@ -120,7 +120,7 @@ waterui-video-gpu = { git = "https://github.com/water-rs/video-gpu", branch = "m
 # `backends/hydrolysis`, so it resolves from the same framework commit as
 # every `waterui-*` crate; its Material 3 theme is still external and follows
 # its `dev`, the source the framework's own patch table names.
-hydrolysis = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
+hydrolysis = { git = "https://github.com/water-rs/waterui", branch = "main" }
 hydrolysis-m3 = { git = "https://github.com/water-rs/hydrolysis-m3", branch = "main" }
 
 # `cherenkov` is unpublished; like the framework's own table, this entry
@@ -131,7 +131,7 @@ hydrolysis-m3 = { git = "https://github.com/water-rs/hydrolysis-m3", branch = "m
 # `filtrate` family enter solely through in-repo path dependencies of the
 # waterui source; nothing names the archived stand-alone cherenkov
 # repository.
-cherenkov = { git = "https://github.com/water-rs/waterui", branch = "refactor/strict-metadata" }
+cherenkov = { git = "https://github.com/water-rs/waterui", branch = "main" }
 
 # Every waterkit crate the codec graph shares types across rides the same
 # commit — a registry `waterkit-core` beside the patched `waterkit-codec` gives
