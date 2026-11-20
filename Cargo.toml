@@ -41,6 +41,7 @@ multiple_crate_versions = "allow"
 
 [dependencies]
 nami = "0.13"
+waterui-accessibility = { version = "0.5.1", git = "https://github.com/water-rs/waterui", branch = "main" }
 waterui-core = "0.5.1"
 waterui-graphics = { version = "0.5.1", default-features = false }
 fast_qr = "0.13"
@@ -50,6 +51,7 @@ thiserror = "2.0.19"
 [dev-dependencies]
 # The generate test decodes the rasterized symbol back to its payload.
 rxing = { version = "0.9.2", default-features = false, features = ["decoders", "encoding_rs", "oned", "qrcode"] }
+waterui-graphics = { version = "0.5.0", features = ["image-decode"] }
 
 # Third-party forks and unreleased water-rs crates the framework itself
 # patches; a registry dependency does not carry its own patch table, so they
@@ -110,18 +112,18 @@ waterui-webview = { git = "https://github.com/water-rs/waterui", branch = "main"
 # crate, patched at the top of the table.
 waterui-chart = { git = "https://github.com/water-rs/chart", branch = "main" }
 waterui-image = { git = "https://github.com/water-rs/image", branch = "main" }
-waterui-map-gpu = { git = "https://github.com/water-rs/map-gpu", branch = "main" }
+waterui-map-gpu = { git = "https://github.com/water-rs/map-gpu", branch = "refactor/4770-slim-core-ui" }
 waterui-math = { git = "https://github.com/water-rs/math", branch = "main" }
 waterui-particle = { git = "https://github.com/water-rs/particle", branch = "main" }
 waterui-svg = { git = "https://github.com/water-rs/svg", branch = "main" }
-waterui-video-gpu = { git = "https://github.com/water-rs/video-gpu", branch = "main" }
+waterui-video-gpu = { git = "https://github.com/water-rs/video-gpu", branch = "refactor/4770-slim-core-ui" }
 
 # The mounted test graph's backend pair: `hydrolysis` lives in-tree at
 # `backends/hydrolysis`, so it resolves from the same framework commit as
 # every `waterui-*` crate; its Material 3 theme is still external and follows
 # its `dev`, the source the framework's own patch table names.
 hydrolysis = { git = "https://github.com/water-rs/waterui", branch = "main" }
-hydrolysis-m3 = { git = "https://github.com/water-rs/hydrolysis-m3", branch = "main" }
+hydrolysis-m3 = { git = "https://github.com/water-rs/hydrolysis-m3", branch = "refactor/4770-slim-core-ui" }
 
 # `cherenkov` is unpublished; like the framework's own table, this entry
 # resolves a registry `cherenkov = "0.0.0"` requirement to the in-tree

@@ -2,12 +2,8 @@ use crate::draw::{Ink, ResolvedFill, filled_canvas, inked_canvas, resolve_color}
 use crate::{BarcodeSymbology, reactive_source};
 use core::fmt;
 use nami::{Computed, SignalExt as _, signal::IntoComputed};
-use waterui_core::{
-    AnyView, Environment, Str, View,
-    accessibility::{AccessibilityLabel, AccessibilityRole},
-    layout::UnitPoint,
-    metadata::Metadata,
-};
+use waterui_accessibility::{AccessibilityLabel, AccessibilityRole};
+use waterui_core::{AnyView, Environment, Str, View, layout::UnitPoint, metadata::Metadata};
 use waterui_graphics::color::Color;
 
 /// Fill style for dark barcode modules.

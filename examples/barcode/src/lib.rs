@@ -1,4 +1,9 @@
-use waterui::{Environment, app::App, prelude::*, preview};
+use waterui::{
+    Environment,
+    app::{App, Windows},
+    prelude::*,
+    preview,
+};
 use waterui_barcode::Barcode;
 
 #[preview]
@@ -14,6 +19,6 @@ pub fn demo() -> impl View {
     .padding()
 }
 
-pub fn app(env: Environment) -> App {
+pub fn app(env: Environment) -> App<impl Windows> {
     App::new(demo, env)
 }
