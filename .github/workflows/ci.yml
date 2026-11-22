@@ -161,8 +161,9 @@ jobs:
     uses: water-rs/.github/.github/workflows/visual-gallery.yml@main
     with:
       artifact-name: waterui-barcode-gallery
-      test-args: -p waterui-barcode -p waterui-barcode-mounted-tests --test generate --test render --all-features
-      run-cpu: true
+      packages: -p waterui-barcode -p waterui-barcode-mounted-tests
+      gpu-features: --all-features
+      nextest-args: --test generate --test render
 
   result:
     # The single check the `main` ruleset requires: it passes when every
