@@ -56,6 +56,14 @@ fn check(source: &BarcodeSource, format: BarcodeFormat, payload: &str, file: &st
     image
         .save_png(out_dir().join(file))
         .expect("png must be writable");
+    if let Some(artifacts_root) = std::env::var_os("WATERUI_TEST_ARTIFACTS_DIR") {
+        let case = file.strip_suffix(".png").unwrap_or(file);
+        let case_dir = PathBuf::from(artifacts_root).join("generate").join(case);
+        std::fs::create_dir_all(&case_dir).expect("artifact directory must be creatable");
+        image
+            .save_png(case_dir.join("00_rendered.png"))
+            .expect("artifact png must be writable");
+    }
     assert_eq!(decode(&image, format), payload);
 }
 

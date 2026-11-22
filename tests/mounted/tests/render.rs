@@ -15,7 +15,7 @@ use waterui::graphics::canvas::{Drawing, Interpolation, LinearGradient};
 use waterui::graphics::color::{Srgb, WorkingColor};
 use waterui_barcode::Barcode;
 use waterui_core::layout::{Point, Rect, Size, UnitPoint};
-use waterui_testing::{Snapshot, ui};
+use waterui_testing::{Snapshot, TestArtifacts, ui};
 
 const QR_CONTENT: &str = "https://waterui.dev";
 const STYLED_CONTENT: &str = "https://waterui.dev/styled";
@@ -78,16 +78,17 @@ fn decode(snapshot: &Snapshot, format: BarcodeFormat) -> String {
         .to_owned()
 }
 
-fn save(snapshot: &Snapshot, variable: &str, default: &str) {
+fn save(snapshot: &Snapshot, case: &str, variable: &str, default: &str) {
     let path = std::env::var(variable).map_or_else(|_| PathBuf::from(default), PathBuf::from);
     snapshot.save_png(&path).expect("the png is writable");
+    TestArtifacts::new("mounted_render").save_snapshot(case, "00_rendered", snapshot);
 }
 
 #[test]
 fn qr_renders_and_decodes() {
     let snapshot = render(768, 768, || Barcode::qr(QR_CONTENT));
     assert_eq!(decode(&snapshot, BarcodeFormat::QR_CODE), QR_CONTENT);
-    save(&snapshot, "WATERUI_QR_OUT", "target/generated_qr.png");
+    save(&snapshot, "qr", "WATERUI_QR_OUT", "target/generated_qr.png");
 }
 
 #[test]
@@ -96,6 +97,7 @@ fn code128_renders_and_decodes() {
     assert_eq!(decode(&snapshot, BarcodeFormat::CODE_128), CODE128_CONTENT);
     save(
         &snapshot,
+        "code128",
         "WATERUI_CODE128_OUT",
         "target/generated_code128.png",
     );
@@ -114,6 +116,7 @@ fn gradient_filled_qr_still_decodes() {
     assert_eq!(decode(&snapshot, BarcodeFormat::QR_CODE), STYLED_CONTENT);
     save(
         &snapshot,
+        "qr_gradient",
         "WATERUI_QR_GRADIENT_OUT",
         "target/generated_qr_gradient.png",
     );
@@ -143,6 +146,7 @@ fn closure_ink_qr_still_decodes() {
     assert_eq!(decode(&snapshot, BarcodeFormat::QR_CODE), STYLED_CONTENT);
     save(
         &snapshot,
+        "qr_masked",
         "WATERUI_QR_MASKED_OUT",
         "target/generated_qr_masked.png",
     );
@@ -168,6 +172,7 @@ fn drawing_ink_qr_still_decodes() {
     assert_eq!(decode(&snapshot, BarcodeFormat::QR_CODE), STYLED_CONTENT);
     save(
         &snapshot,
+        "qr_drawing",
         "WATERUI_QR_DRAWING_OUT",
         "target/generated_qr_drawing.png",
     );
