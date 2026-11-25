@@ -89,28 +89,19 @@ impl fmt::Debug for BarcodeSource {
 }
 
 impl BarcodeSource {
-    /// Creates a new QR code from content.
+    /// Creates a new barcode source for `symbology` from `content`.
     ///
     /// # Errors
     ///
-    /// Returns [`BarcodeError::Qr`] when the payload exceeds QR capacity.
-    pub fn qr(content: impl Into<Str>) -> Result<Self, BarcodeError> {
+    /// Returns [`BarcodeError::Qr`] when QR encoding exceeds capacity, or
+    /// [`BarcodeError::Code128`] when `content` contains characters Code128
+    /// cannot represent or is too short to encode.
+    pub fn new(symbology: BarcodeSymbology, content: impl Into<Str>) -> Result<Self, BarcodeError> {
         let content = content.into();
-        Self::new(BarcodeSymbology::Qr, content.as_ref())
+        Self::encode(symbology, content.as_ref())
     }
 
-    /// Creates a new Code128 barcode from content.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`BarcodeError::Code128`] when the payload contains characters
-    /// Code128 cannot represent or is too short to encode.
-    pub fn code128(content: impl Into<Str>) -> Result<Self, BarcodeError> {
-        let content = content.into();
-        Self::new(BarcodeSymbology::Code128, content.as_ref())
-    }
-
-    fn new(symbology: BarcodeSymbology, content: &str) -> Result<Self, BarcodeError> {
+    fn encode(symbology: BarcodeSymbology, content: &str) -> Result<Self, BarcodeError> {
         let matrix = match symbology {
             BarcodeSymbology::Qr => Self::generate_qr_matrix(content)?,
             BarcodeSymbology::Code128 => Self::generate_code128_matrix(content)?,
@@ -127,9 +118,9 @@ impl BarcodeSource {
     ///
     /// This is the fast-fail entry point for signal-driven content, where no
     /// `Result` can flow back to the caller; pre-validate runtime user input
-    /// through [`BarcodeSource::qr`] / [`BarcodeSource::code128`] instead.
+    /// through [`BarcodeSource::new`] instead.
     pub(crate) fn encode_or_panic(symbology: BarcodeSymbology, content: &str) -> Self {
-        Self::new(symbology, content).unwrap_or_else(|error| {
+        Self::encode(symbology, content).unwrap_or_else(|error| {
             panic!("barcode content {content:?} cannot be encoded: {error}")
         })
     }
@@ -291,8 +282,7 @@ nami::impl_constant!(BarcodeSource);
 /// # Panics
 ///
 /// Panics when the signal's current or any later value cannot be encoded for
-/// `symbology`; pre-validate runtime user input through
-/// [`BarcodeSource::qr`] / [`BarcodeSource::code128`].
+/// `symbology`; pre-validate runtime user input through [`BarcodeSource::new`].
 #[must_use]
 pub fn reactive_source(
     symbology: BarcodeSymbology,
@@ -340,8 +330,8 @@ mod tests {
     /// grid with its quiet zone so no module can collapse.
     #[test]
     fn a_qr_code_is_its_extent_squared_floored_at_its_modules() {
-        let mut source =
-            BarcodeSource::qr("https://waterui.dev").expect("static payload must encode");
+        let mut source = BarcodeSource::new(BarcodeSymbology::Qr, "https://waterui.dev")
+            .expect("static payload must encode");
         assert_eq!(source.output_size(), (256, 256));
 
         let modules = source.matrix().width + source.quiet_zone() * 2;
@@ -353,8 +343,8 @@ mod tests {
     /// count is the width, each floored where a floor exists.
     #[test]
     fn a_code128_is_its_bars_wide_and_its_extent_tall() {
-        let mut source =
-            BarcodeSource::code128("HELLO-WATERUI").expect("static payload must encode");
+        let mut source = BarcodeSource::new(BarcodeSymbology::Code128, "HELLO-WATERUI")
+            .expect("static payload must encode");
         let bars = source.matrix().width + source.quiet_zone() * 2;
         assert!(
             bars < 256,
@@ -368,8 +358,8 @@ mod tests {
 
     #[test]
     fn code128_matrix_stores_one_row_of_modules() {
-        let source =
-            BarcodeSource::code128("HELLO-WATERUI-128").expect("static test payload must encode");
+        let source = BarcodeSource::new(BarcodeSymbology::Code128, "HELLO-WATERUI-128")
+            .expect("static test payload must encode");
         let matrix = source.matrix();
 
         assert_eq!(matrix.height, 1);
@@ -378,8 +368,8 @@ mod tests {
 
     #[test]
     fn qr_matrix_remains_square() {
-        let source =
-            BarcodeSource::qr("https://waterui.dev").expect("static test payload must encode");
+        let source = BarcodeSource::new(BarcodeSymbology::Qr, "https://waterui.dev")
+            .expect("static test payload must encode");
         let matrix = source.matrix();
 
         assert_eq!(matrix.width, matrix.height);

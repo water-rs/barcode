@@ -95,10 +95,10 @@ fn apply_barcode_semantics(
 /// # Example
 ///
 /// ```rust
-/// use waterui_barcode::Barcode;
+/// use waterui_barcode::{Barcode, BarcodeSymbology};
 ///
-/// Barcode::qr("https://waterui.dev");
-/// Barcode::code128("HELLO-WATERUI");
+/// Barcode::new(BarcodeSymbology::Qr, "https://waterui.dev");
+/// Barcode::new(BarcodeSymbology::Code128, "HELLO-WATERUI");
 /// ```
 #[derive(Clone, Debug)]
 pub struct Barcode {
@@ -123,41 +123,21 @@ impl<I: Ink> fmt::Debug for BarcodeSceneFill<I> {
 }
 
 impl Barcode {
-    /// Creates a QR code view.
+    /// Creates a barcode view for `symbology`.
     ///
-    /// Content is a signal: a rotating token or live pairing URL re-encodes
-    /// the matrix in place without rebuilding the view.
-    ///
-    /// # Panics
-    ///
-    /// The view panics while rendering when a content value exceeds QR
-    /// capacity. Pre-validate runtime user input with [`BarcodeSource::qr`].
-    ///
-    /// [`BarcodeSource::qr`]: crate::BarcodeSource::qr
-    pub fn qr(content: impl IntoComputed<Str>) -> Self {
-        Self {
-            symbology: BarcodeSymbology::Qr,
-            content: content.into_computed(),
-            fill: BarcodeFill::default(),
-            light_color: default_light_color(),
-        }
-    }
-
-    /// Creates a Code128 barcode view.
-    ///
-    /// Content is a signal: a changing order id re-encodes the matrix in
-    /// place without rebuilding the view.
+    /// Content is a signal: a rotating token, live pairing URL, or changing
+    /// order id re-encodes the matrix in place without rebuilding the view.
     ///
     /// # Panics
     ///
-    /// The view panics while rendering when a content value contains
-    /// characters Code128 cannot represent. Pre-validate runtime user input
-    /// with [`BarcodeSource::code128`].
+    /// The view panics while rendering when a content value cannot be encoded
+    /// for `symbology`. Pre-validate runtime user input with
+    /// [`BarcodeSource::new`].
     ///
-    /// [`BarcodeSource::code128`]: crate::BarcodeSource::code128
-    pub fn code128(content: impl IntoComputed<Str>) -> Self {
+    /// [`BarcodeSource::new`]: crate::BarcodeSource::new
+    pub fn new(symbology: BarcodeSymbology, content: impl IntoComputed<Str>) -> Self {
         Self {
-            symbology: BarcodeSymbology::Code128,
+            symbology,
             content: content.into_computed(),
             fill: BarcodeFill::default(),
             light_color: default_light_color(),
@@ -246,18 +226,10 @@ impl<I: Ink> View for BarcodeSceneFill<I> {
     }
 }
 
-/// Free-function entry point for a QR code view.
+/// Free-function entry point for a barcode view.
 ///
-/// See [`Barcode::qr`] for content semantics and panic conditions.
+/// See [`Barcode::new`] for content semantics and panic conditions.
 #[must_use]
-pub fn qr_code(content: impl IntoComputed<Str>) -> Barcode {
-    Barcode::qr(content)
-}
-
-/// Free-function entry point for a Code128 barcode view.
-///
-/// See [`Barcode::code128`] for content semantics and panic conditions.
-#[must_use]
-pub fn code128(content: impl IntoComputed<Str>) -> Barcode {
-    Barcode::code128(content)
+pub fn barcode(symbology: BarcodeSymbology, content: impl IntoComputed<Str>) -> Barcode {
+    Barcode::new(symbology, content)
 }

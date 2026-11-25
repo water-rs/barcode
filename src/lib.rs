@@ -26,13 +26,13 @@
 //! # Example
 //!
 //! ```ignore
-//! use waterui_barcode::Barcode;
+//! use waterui_barcode::{Barcode, BarcodeSymbology};
 //!
 //! // Create a QR code view
-//! Barcode::qr("https://waterui.dev")
+//! Barcode::new(BarcodeSymbology::Qr, "https://waterui.dev")
 //!
 //! // Create a Code128 barcode view
-//! Barcode::code128("HELLO-WATERUI")
+//! Barcode::new(BarcodeSymbology::Code128, "HELLO-WATERUI")
 //! ```
 
 mod draw;
@@ -44,4 +44,4 @@ pub use draw::Ink;
 #[doc(hidden)]
 pub use qr::reactive_source;
 pub use qr::{BarcodeError, BarcodeMatrix, BarcodeSource, BarcodeSymbology};
-pub use view::{Barcode, BarcodeFill, BarcodeSceneFill, code128, qr_code};
+pub use view::{Barcode, BarcodeFill, BarcodeSceneFill, barcode};
