@@ -7,7 +7,7 @@ use rxing::{
     BarcodeFormat, BinaryBitmap, DecodeHints, Luma8LuminanceSource, MultiFormatReader, Reader,
     common::HybridBinarizer,
 };
-use waterui_barcode::BarcodeSource;
+use waterui_barcode::{BarcodeSource, BarcodeSymbology};
 use waterui_graphics::{OffscreenImage, OffscreenRenderer, gpu::Gpu};
 
 fn decode(image: &OffscreenImage, format: BarcodeFormat) -> String {
@@ -70,7 +70,8 @@ fn check(source: &BarcodeSource, format: BarcodeFormat, payload: &str, file: &st
 #[test]
 fn qr_generates_a_decodable_image() {
     let payload = "https://waterui.dev";
-    let mut source = BarcodeSource::qr(payload).expect("static test payload must encode");
+    let mut source =
+        BarcodeSource::new(BarcodeSymbology::Qr, payload).expect("static test payload must encode");
     source.set_size(768);
     check(&source, BarcodeFormat::QR_CODE, payload, "generate_qr.png");
 }
@@ -78,7 +79,8 @@ fn qr_generates_a_decodable_image() {
 #[test]
 fn code128_generates_a_decodable_image() {
     let payload = "HELLO-WATERUI-128";
-    let mut source = BarcodeSource::code128(payload).expect("static test payload must encode");
+    let mut source = BarcodeSource::new(BarcodeSymbology::Code128, payload)
+        .expect("static test payload must encode");
     // A Code128 symbol is its bar count wide at the smallest extent; a whole
     // number of pixels per module keeps the bars sharp enough to decode.
     source.set_size(1);

@@ -108,7 +108,8 @@ mod tests {
     /// A static barcode is its output size, at one unit per pixel.
     #[test]
     fn a_static_barcode_measures_at_its_output_size() {
-        let mut source = BarcodeSource::code128("HELLO").expect("static payload must encode");
+        let mut source = BarcodeSource::new(BarcodeSymbology::Code128, "HELLO")
+            .expect("static payload must encode");
         source.set_size(40);
         let (width, height) = source.output_size();
 
@@ -139,7 +140,8 @@ mod tests {
 
     #[test]
     fn qr_content_is_the_centred_square() {
-        let source = BarcodeSource::qr("https://waterui.dev").expect("static payload must encode");
+        let source = BarcodeSource::new(BarcodeSymbology::Qr, "https://waterui.dev")
+            .expect("static payload must encode");
         let area = content_rect(&source, Size::new(400.0, 200.0));
 
         assert_eq!(
@@ -150,7 +152,8 @@ mod tests {
 
     #[test]
     fn code128_content_fills_the_surface() {
-        let source = BarcodeSource::code128("HELLO-WATERUI").expect("static payload must encode");
+        let source = BarcodeSource::new(BarcodeSymbology::Code128, "HELLO-WATERUI")
+            .expect("static payload must encode");
         let area = content_rect(&source, Size::new(400.0, 200.0));
 
         assert_eq!(area, Rect::from_size(Size::new(400.0, 200.0)));
@@ -158,7 +161,8 @@ mod tests {
 
     #[test]
     fn dark_modules_stay_inside_the_quiet_zone() {
-        let source = BarcodeSource::qr("https://waterui.dev").expect("static payload must encode");
+        let source = BarcodeSource::new(BarcodeSymbology::Qr, "https://waterui.dev")
+            .expect("static payload must encode");
         let area = content_rect(&source, Size::new(256.0, 256.0));
         let bounds = dark_module_path(&source, area).bounds();
 
@@ -180,7 +184,8 @@ mod tests {
 
     #[test]
     fn code128_bars_span_the_full_height() {
-        let source = BarcodeSource::code128("HELLO-WATERUI").expect("static payload must encode");
+        let source = BarcodeSource::new(BarcodeSymbology::Code128, "HELLO-WATERUI")
+            .expect("static payload must encode");
         let area = content_rect(&source, Size::new(512.0, 128.0));
         let bounds = dark_module_path(&source, area).bounds();
 

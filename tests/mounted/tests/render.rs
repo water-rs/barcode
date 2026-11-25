@@ -13,7 +13,7 @@ use waterui::SignalExt as _;
 use waterui::ViewExt as _;
 use waterui::graphics::canvas::{Drawing, Interpolation, LinearGradient};
 use waterui::graphics::color::{Srgb, WorkingColor};
-use waterui_barcode::Barcode;
+use waterui_barcode::{Barcode, BarcodeSymbology};
 use waterui_core::layout::{Point, Rect, Size, UnitPoint};
 use waterui_testing::{Snapshot, TestArtifacts, ui};
 
@@ -86,14 +86,16 @@ fn save(snapshot: &Snapshot, case: &str, variable: &str, default: &str) {
 
 #[test]
 fn qr_renders_and_decodes() {
-    let snapshot = render(768, 768, || Barcode::qr(QR_CONTENT));
+    let snapshot = render(768, 768, || Barcode::new(BarcodeSymbology::Qr, QR_CONTENT));
     assert_eq!(decode(&snapshot, BarcodeFormat::QR_CODE), QR_CONTENT);
     save(&snapshot, "qr", "WATERUI_QR_OUT", "target/generated_qr.png");
 }
 
 #[test]
 fn code128_renders_and_decodes() {
-    let snapshot = render(1024, 256, || Barcode::code128(CODE128_CONTENT));
+    let snapshot = render(1024, 256, || {
+        Barcode::new(BarcodeSymbology::Code128, CODE128_CONTENT)
+    });
     assert_eq!(decode(&snapshot, BarcodeFormat::CODE_128), CODE128_CONTENT);
     save(
         &snapshot,
@@ -106,7 +108,7 @@ fn code128_renders_and_decodes() {
 #[test]
 fn gradient_filled_qr_still_decodes() {
     let snapshot = render(768, 768, || {
-        Barcode::qr(STYLED_CONTENT).linear_gradient(
+        Barcode::new(BarcodeSymbology::Qr, STYLED_CONTENT).linear_gradient(
             waterui::graphics::color::Color::from(Srgb::new(0.0, 0.25, 0.3)),
             waterui::graphics::color::Color::from(Srgb::new(0.35, 0.0, 0.25)),
             UnitPoint::TOP_LEADING,
@@ -128,7 +130,7 @@ fn gradient_filled_qr_still_decodes() {
 #[test]
 fn closure_ink_qr_still_decodes() {
     let snapshot = render_with(768, 768, || {
-        Barcode::qr(STYLED_CONTENT)
+        Barcode::new(BarcodeSymbology::Qr, STYLED_CONTENT)
             .fill_scene(|cx: &mut waterui::graphics::canvas::Cx| {
                 let size = cx.size();
                 cx.fill(
@@ -165,7 +167,7 @@ fn drawing_ink_qr_still_decodes() {
         );
     });
     let snapshot = render_with(768, 768, move || {
-        Barcode::qr(STYLED_CONTENT)
+        Barcode::new(BarcodeSymbology::Qr, STYLED_CONTENT)
             .fill_scene(ink.clone())
             .size(768.0, 768.0)
     });

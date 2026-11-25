@@ -8,7 +8,7 @@
 use hydrolysis_m3::Material3;
 use waterui::ViewExt as _;
 use waterui::layout::scroll::ScrollView;
-use waterui_barcode::Barcode;
+use waterui_barcode::{Barcode, BarcodeSymbology};
 use waterui_testing::{OffscreenApp, Role, ui};
 
 const QR_LABEL: &str = "QR code: https://waterui.dev";
@@ -35,7 +35,9 @@ fn a_qr_code_stays_square_on_an_unconstrained_axis() {
     let mut app = ui()
         .theme(Material3::defaults())
         .viewport(300, 200)
-        .mount_offscreen(|| ScrollView::vertical(Barcode::qr("https://waterui.dev")));
+        .mount_offscreen(|| {
+            ScrollView::vertical(Barcode::new(BarcodeSymbology::Qr, "https://waterui.dev"))
+        });
     assert_close(bounds(&mut app, QR_LABEL), (300.0, 300.0));
 }
 
@@ -46,7 +48,9 @@ fn a_barcode_still_fills_a_frame() {
     let mut app = ui()
         .theme(Material3::defaults())
         .viewport(400, 400)
-        .mount_offscreen(|| Barcode::code128("HELLO-WATERUI-128").size(180.0, 80.0));
+        .mount_offscreen(|| {
+            Barcode::new(BarcodeSymbology::Code128, "HELLO-WATERUI-128").size(180.0, 80.0)
+        });
     assert_close(
         bounds(&mut app, "Code 128 barcode: HELLO-WATERUI-128"),
         (180.0, 80.0),

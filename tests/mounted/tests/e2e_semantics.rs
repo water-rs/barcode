@@ -1,11 +1,11 @@
 //! End-to-end accessibility-semantics tests for the `barcode` component.
 
 use waterui::ViewExt as _;
-use waterui_barcode::Barcode;
+use waterui_barcode::{Barcode, BarcodeSymbology};
 use waterui_testing::{Role, SemanticApp};
 
 fn qr_barcode_view() -> impl waterui::View {
-    Barcode::qr("https://waterui.dev/testing").size(180.0, 180.0)
+    Barcode::new(BarcodeSymbology::Qr, "https://waterui.dev/testing").size(180.0, 180.0)
 }
 
 #[waterui::test(qr_barcode_view)]
@@ -19,7 +19,7 @@ fn qr_barcode_exposes_accessible_image_node(app: &mut SemanticApp) {
 }
 
 fn code128_barcode_view() -> impl waterui::View {
-    Barcode::code128("HELLO-WATERUI-128").size(180.0, 80.0)
+    Barcode::new(BarcodeSymbology::Code128, "HELLO-WATERUI-128").size(180.0, 80.0)
 }
 
 #[waterui::test(code128_barcode_view)]
